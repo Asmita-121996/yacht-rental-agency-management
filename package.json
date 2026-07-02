@@ -1,0 +1,14 @@
+{
+  "name": "yachtflow-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently --kill-others \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "build:client": "npm run build --prefix client",
+    "db:seed": "node server/seed.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
