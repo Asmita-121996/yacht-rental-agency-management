@@ -1,20 +1,17 @@
 import pg from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const { Pool } = pg;
-
-// Connection pool targeting local PostgreSQL instance
-const pool = new Pool({
-  user: process.env.PGUSER || process.env.USER || 'postgres',
-  host: process.env.PGHOST || '127.0.0.1',
-  database: process.env.PGDATABASE || 'yachtflow',
-  password: process.env.PGPASSWORD || '',
-  port: parseInt(process.env.PGPORT || '5432', 10),
+// Create the connection pool targeting the local PostgreSQL server
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL || 'postgresql://enjay@localhost:5432/yachtflow'
 });
 
-export default {
-  query: (text, params) => pool.query(text, params),
-  pool
-};
+// Configure Prisma 7 to use the PostgreSQL driver adapter
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
+
+export default prisma;

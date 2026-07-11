@@ -81,6 +81,7 @@ async function runSeed() {
     // Clean existing tables to prevent key duplicate conflicts on seed runs
     console.log("Cleaning existing database records for fresh seed...");
     await pool.query(`TRUNCATE TABLE bookings CASCADE`);
+    await pool.query(`TRUNCATE TABLE sessions CASCADE`);
     await pool.query(`TRUNCATE TABLE yachts CASCADE`);
     await pool.query(`TRUNCATE TABLE users CASCADE`);
     await pool.query(`TRUNCATE TABLE system_defaults CASCADE`);
@@ -88,16 +89,19 @@ async function runSeed() {
     // 1. Seed users
     console.log("Seeding default user accounts...");
     const users = [
-      { id: "u1", name: "Pradeesh Ezhava", type: "Regular User", designation: "Sales", role: "sales", active: true, password: hashPassword("sales123") },
-      { id: "u2", name: "Chetan", type: "Regular User", designation: "Sales", role: "sales", active: true, password: hashPassword("sales123") },
-      { id: "u3", name: "SQ Accounts", type: "Regular User", designation: "Accounts", role: "accounts", active: true, password: hashPassword("accounts123") },
-      { id: "u4", name: "SQ ADMIN", type: "Admin", designation: "Admin", role: "admin", active: true, password: hashPassword("admin123") }
+      { id: "u1", name: "Pradeesh Ezhava", email: "pradeesh@yachtflow.co", type: "Regular User", designation: "Sales", role: "sales", active: true, password: hashPassword("sales123") },
+      { id: "u2", name: "Chetan", email: "chetan@yachtflow.co", type: "Regular User", designation: "Sales", role: "sales", active: true, password: hashPassword("sales123") },
+      { id: "u3", name: "SQ Accounts", email: "accounts@yachtflow.co", type: "Regular User", designation: "Accounts", role: "accounts", active: true, password: hashPassword("accounts123") },
+      { id: "u4", name: "SQ ADMIN", email: "admin@yachtflow.co", type: "Admin", designation: "Admin", role: "admin", active: true, password: hashPassword("admin123") },
+      { id: "u5", name: "Captain Morgan", email: "captain@yachtflow.co", type: "Regular User", designation: "Captain", role: "captain", active: true, password: hashPassword("captain123") },
+      { id: "u6", name: "Agent Dubai", email: "agent.dubai@yachtflow.co", type: "Agent", designation: "Field Agent", role: "agent", active: true, password: hashPassword("agent123") },
+      { id: "u7", name: "Agent Abu Dhabi", email: "agent.abudhabi@yachtflow.co", type: "Agent", designation: "Field Agent", role: "agent", active: true, password: hashPassword("agent123") }
     ];
 
     for (const u of users) {
       await pool.query(
-        `INSERT INTO users (id, name, type, designation, role, active, password) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [u.id, u.name, u.type, u.designation, u.role, u.active, u.password]
+        `INSERT INTO users (id, name, email, type, designation, role, active, password) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [u.id, u.name, u.email, u.type, u.designation, u.role, u.active, u.password]
       );
     }
 
@@ -127,6 +131,14 @@ async function runSeed() {
 
     // 4. Seed bookings
     console.log("Seeding mock booking histories...");
+    const todayDateStr = new Date().toISOString().slice(0, 10);
+    const getLocalTodayISO = (hourStr) => {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      return new Date(`${yyyy}-${mm}-${dd}T${hourStr}`).toISOString();
+    };
     const bookings = [
       {
         id: "b1",
@@ -319,8 +331,8 @@ async function runSeed() {
         children: 0,
         total_guests: 4,
         yacht_id: "y1",
-        start_date: "2026-07-05T10:00:00Z",
-        end_date: "2026-07-05T14:00:00Z",
+        start_date: getLocalTodayISO("10:00:00"),
+        end_date: getLocalTodayISO("14:00:00"),
         duration_hours: 4,
         pickup_location: "Downtown Harbor Terminal",
         catering_enabled: true,
@@ -333,7 +345,12 @@ async function runSeed() {
         payment_amount: 1628,
         status: "Confirmed",
         sales_person: "Pradeesh Ezhava",
-        created_at: "2026-06-29T11:00:00Z"
+        created_at: "2026-06-29T11:00:00Z",
+        actual_adults: null,
+        actual_children: 0,
+        actual_total_guests: null,
+        payment_collected_by: null,
+        boarding_status: "Scheduled"
       },
       {
         id: "b10",
@@ -356,25 +373,65 @@ async function runSeed() {
         payment_amount: 0,
         status: "Pending",
         sales_person: "Pradeesh Ezhava",
-        created_at: "2026-06-28T09:15:00Z"
+        created_at: "2026-06-28T09:15:00Z",
+        actual_adults: null,
+        actual_children: 0,
+        actual_total_guests: null,
+        payment_collected_by: null,
+        boarding_status: "Scheduled"
+      },
+      {
+        id: "b11",
+        guest_name: "Bruce Wayne",
+        adults: 10,
+        children: 2,
+        total_guests: 12,
+        yacht_id: "y4",
+        start_date: getLocalTodayISO("15:00:00"),
+        end_date: getLocalTodayISO("19:00:00"),
+        duration_hours: 4,
+        pickup_location: "North Point Yacht Club",
+        catering_enabled: true,
+        external_service_charges: 300,
+        subtotal: 4300,
+        vat_rate: 5,
+        vat_amount: 215,
+        total_amount: 4515,
+        payment_mode: "Cash",
+        payment_amount: 0,
+        status: "Confirmed",
+        sales_person: "Chetan",
+        created_at: "2026-06-30T10:00:00Z",
+        actual_adults: null,
+        actual_children: 0,
+        actual_total_guests: null,
+        payment_collected_by: null,
+        boarding_status: "Scheduled"
       }
     ];
 
     for (const b of bookings) {
+      const isCatering = !!b.catering_enabled;
+      const cateringVal = isCatering ? (b.adults + b.children) * 50 : 0;
+
       await pool.query(
         `INSERT INTO bookings (
           id, guest_name, adults, children, total_guests, yacht_id, 
-          start_date, end_date, duration_hours, pickup_location, 
+          start_date, end_date, duration_hours, offered_hourly_rate,
           catering_enabled, external_service_charges, subtotal, 
           vat_rate, vat_amount, total_amount, payment_mode, 
-          payment_amount, status, sales_person, created_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
+          payment_amount, status, sales_person, created_at,
+          actual_adults, actual_children, actual_total_guests, payment_collected_by, boarding_status,
+          decoration_charges, water_slide_charges, jet_ski_charges, catering_charges, other_charges
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)`,
         [
           b.id, b.guest_name, b.adults, b.children, b.total_guests, b.yacht_id,
-          b.start_date, b.end_date, b.duration_hours, b.pickup_location,
+          b.start_date, b.end_date, b.duration_hours, null,
           b.catering_enabled, b.external_service_charges, b.subtotal,
           b.vat_rate, b.vat_amount, b.total_amount, b.payment_mode,
-          b.payment_amount, b.status, b.sales_person, b.created_at
+          b.payment_amount, b.status, b.sales_person, b.created_at,
+          b.actual_adults || null, b.actual_children || 0, b.actual_total_guests || null, b.payment_collected_by || null, b.boarding_status || 'Scheduled',
+          0, 0, 0, cateringVal, 0
         ]
       );
     }

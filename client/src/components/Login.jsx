@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 export default function Login({ users, onLogin }) {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
@@ -9,8 +9,8 @@ export default function Login({ users, onLogin }) {
     e.preventDefault();
     setError("");
 
-    if (!username.trim() || !password.trim()) {
-      setError("Please enter both username and password.");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email and password.");
       return;
     }
 
@@ -21,12 +21,12 @@ export default function Login({ users, onLogin }) {
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ email, password })
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Incorrect name or password.");
+        throw new Error(data.error || "Incorrect email or password.");
       }
 
       // Successful authentication, trigger callback
@@ -53,12 +53,12 @@ export default function Login({ users, onLogin }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-16">
           <div className="form-group">
-            <label>Name / Username *</label>
+            <label>Email Address *</label>
             <input
-              type="text"
-              placeholder="e.g. SQ ADMIN"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              placeholder="e.g. admin@yachtflow.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               style={{ padding: '10px', fontSize: '0.95rem' }}
             />
@@ -88,9 +88,10 @@ export default function Login({ users, onLogin }) {
         <div style={{ marginTop: '24px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
           <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>💡 Quick-start Credentials (Type exactly):</div>
           <ul style={{ paddingLeft: '16px', margin: 0 }}>
-            <li><strong>Admin</strong>: <code>SQ ADMIN</code> (password: <code>admin123</code>)</li>
-            <li><strong>Sales</strong>: <code>Pradeesh Ezhava</code> or <code>Chetan</code> (password: <code>sales123</code>)</li>
-            <li><strong>Accounts</strong>: <code>SQ Accounts</code> (password: <code>accounts123</code>)</li>
+            <li><strong>Admin</strong>: <code>admin@yachtflow.co</code> (password: <code>admin123</code>)</li>
+            <li><strong>Sales</strong>: <code>pradeesh@yachtflow.co</code> or <code>chetan@yachtflow.co</code> (password: <code>sales123</code>)</li>
+            <li><strong>Accounts</strong>: <code>accounts@yachtflow.co</code> (password: <code>accounts123</code>)</li>
+            <li><strong>Captain</strong>: <code>captain@yachtflow.co</code> (password: <code>captain123</code>)</li>
           </ul>
         </div>
       </div>

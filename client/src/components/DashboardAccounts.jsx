@@ -72,45 +72,309 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
 
   const momStats = getMoMChange();
 
-  // CSV Report Generator
   const handleExportCSV = () => {
+    const formatDate = (dateStr) => {
+      if (!dateStr) return "";
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return "";
+      const day = date.getDate();
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = months[date.getMonth()];
+      const year = String(date.getFullYear()).substring(2);
+      return `${day}/${month}/${year}`;
+    };
+
+    const formatTimeRange = (startStr, endStr) => {
+      if (!startStr || !endStr) return "";
+      const s = new Date(startStr);
+      const e = new Date(endStr);
+      if (isNaN(s.getTime()) || isNaN(e.getTime())) return "";
+      const pad = (num) => String(num).padStart(2, '0');
+      return `${pad(s.getHours())}:${pad(s.getMinutes())}-${pad(e.getHours())}:${pad(e.getMinutes())}`;
+    };
+
+    const escapeCsvCell = (val) => {
+      if (val === null || val === undefined) return "";
+      let str = String(val);
+      if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+        str = `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const headers = [
-      "Booking ID", "Guest Name", "Yacht", "Start Date", "End Date", 
-      "Duration (Hours)", "Adults", "Children", "Subtotal ($)", 
-      "VAT ($)", "VAT Rate (%)", "Total Amount ($)", "Amount Paid ($)", "Balance ($)", 
-      "Status", "Sales Executive", "Payment Mode"
+      "Invoice #", "Date", "Payment Mode", "Sales Staff", "Services", "Sales Head", "Time", "Ledger", "Booking from", "Touris Details", "", "Adult/qty", "Adult Rate", "AdultAmount", "Child", "ChildRate", "ChildAmount", "Total Pax", "GrossAmount", "VAT(5%)", "TotalAmount", "Remarks", "Comm", "Supplier Payment Details", "Ref#", "Supplier 1", "Rate", "Adult", "Child2", "Qty", "SupplierAmount", "Supplier 2", "Supplier Amount", "OperatingCost", "Profit", "Remarks2", "", "Sales Narration"
     ];
 
-    const rows = filteredBookings.map(b => {
+    const rows = [];
+
+    // Title Row
+    const titleRow = Array(38).fill("");
+    titleRow[0] = `Silver Queen Yacht - Sales Report for the Month of ${filterMonth}`;
+    rows.push(titleRow);
+    rows.push(Array(38).fill("")); // separator
+
+    // Headers Row
+    rows.push(headers);
+
+    let totalQty = 0;
+    let totalGross = 0;
+    let totalVat = 0;
+    let totalAmountSum = 0;
+    let totalProfit = 0;
+
+    filteredBookings.forEach(b => {
       const yacht = yachts.find(y => y.id === b.yachtId);
-      return [
+      const yachtCost = b.durationHours * (yacht ? yacht.hourlyRate : 0);
+      const yachtVat = Math.round(yachtCost * (b.vatRate / 100));
+      const yachtTotal = yachtCost + yachtVat;
+
+      totalQty += b.adults + b.children;
+      totalGross += yachtCost;
+      totalVat += yachtVat;
+      totalAmountSum += yachtTotal;
+      totalProfit += yachtCost;
+
+      // 1. Yacht Rental row
+      rows.push([
         b.id,
-        `"${b.guestName.replace(/"/g, '""')}"`,
-        yacht ? yacht.name : "Unknown",
-        b.startDate,
-        b.endDate,
-        b.durationHours,
+        formatDate(b.startDate),
+        `${b.paymentMode} ${b.paymentAmount}/-`,
+        b.salesPerson,
+        `${yacht ? yacht.name : "SQ"} - Yacht Rental`,
+        `Sales - ${yacht ? yacht.name : "Yacht"}`,
+        formatTimeRange(b.startDate, b.endDate),
+        `${b.salesPerson === 'Office' ? 'Customer (Office)' : b.salesPerson + ' Sales'} - A/R`,
+        b.guestName,
+        `${b.durationHours}-Hours Yacht Trip`,
+        "",
         b.adults,
-        b.children,
-        b.subtotal,
-        b.vatAmount,
-        b.vatRate,
-        b.totalAmount,
-        b.paymentAmount,
-        b.totalAmount - b.paymentAmount,
-        b.status,
-        `"${b.salesPerson.replace(/"/g, '""')}"`,
-        b.paymentMode
-      ];
+        yacht ? yacht.hourlyRate : 0,
+        yachtCost.toFixed(2),
+        b.children || "",
+        "",
+        "",
+        b.adults + b.children,
+        yachtCost.toFixed(2),
+        yachtVat.toFixed(2),
+        yachtTotal.toFixed(2),
+        "",
+        "-",
+        "", "", "", "", "", "", "", "", "", "", "",
+        yachtCost.toFixed(2),
+        "", "", ""
+      ]);
+
+      const pushServiceRow = (serviceName, detailText, chargeVal) => {
+        if (chargeVal <= 0) return;
+        const svcVat = Math.round(chargeVal * (b.vatRate / 100));
+        const svcTotal = chargeVal + svcVat;
+
+        totalQty += 1;
+        totalGross += chargeVal;
+        totalVat += svcVat;
+        totalAmountSum += svcTotal;
+        totalProfit += chargeVal;
+
+        rows.push([
+          "",
+          formatDate(b.startDate),
+          "",
+          b.salesPerson,
+          serviceName,
+          `Sales - ${yacht ? yacht.name : "Yacht"}`,
+          "",
+          `${b.salesPerson === 'Office' ? 'Customer (Office)' : b.salesPerson + ' Sales'} - A/R`,
+          b.guestName,
+          detailText,
+          "",
+          1,
+          chargeVal,
+          chargeVal.toFixed(2),
+          "", "", "",
+          1,
+          chargeVal.toFixed(2),
+          svcVat.toFixed(2),
+          svcTotal.toFixed(2),
+          "",
+          "-",
+          "", "", "", "", "", "", "", "", "", "", "",
+          chargeVal.toFixed(2),
+          "", "", ""
+        ]);
+      };
+
+      // 2. Decoration row
+      pushServiceRow("Balloon Decoration", "Decoration Arranged", b.decorationCharges || 0);
+
+      // 3. Water Slide row
+      pushServiceRow("Water Slide Rental", "Water Slide", b.waterSlideCharges || 0);
+
+      // 4. Jet Ski row
+      pushServiceRow("Jet Ski Rental", "1 Hour Jet Ski", b.jetSkiCharges || 0);
+
+      // 5. Catering row
+      const cateringVal = b.cateringCharges > 0 
+        ? Number(b.cateringCharges) 
+        : (b.cateringEnabled ? (b.adults + b.children) * 50 : 0);
+      
+      if (cateringVal > 0) {
+        const cateringCost = cateringVal;
+        const cateringVat = Math.round(cateringCost * (b.vatRate / 100));
+        const cateringTotal = cateringCost + cateringVat;
+
+        totalQty += b.adults + b.children;
+        totalGross += cateringCost;
+        totalVat += cateringVat;
+        totalAmountSum += cateringTotal;
+        totalProfit += cateringCost;
+
+        rows.push([
+          "",
+          formatDate(b.startDate),
+          "",
+          b.salesPerson,
+          "Catering (Food)",
+          `Sales - ${yacht ? yacht.name : "Yacht"}`,
+          "",
+          `${b.salesPerson === 'Office' ? 'Customer (Office)' : b.salesPerson + ' Sales'} - A/R`,
+          b.guestName,
+          "Food Arranged",
+          "",
+          b.adults + b.children,
+          (cateringCost / (b.adults + b.children || 1)).toFixed(2),
+          cateringCost.toFixed(2),
+          "", "", "",
+          b.adults + b.children,
+          cateringCost.toFixed(2),
+          cateringVat.toFixed(2),
+          cateringTotal.toFixed(2),
+          "",
+          "-",
+          "", "", "", "", "", "", "", "", "", "", "",
+          cateringCost.toFixed(2),
+          "", "", ""
+        ]);
+      }
+
+      // 6. Other Service row
+      pushServiceRow("Other Service", "Additional services", b.otherCharges || 0);
+
+      // 7. Backward compatibility for externalServiceCharges
+      const hasSpecificCharges = (b.decorationCharges > 0 || b.waterSlideCharges > 0 || b.jetSkiCharges > 0 || b.otherCharges > 0);
+      if (!hasSpecificCharges && b.externalServiceCharges > 0) {
+        pushServiceRow("External Service / Add-ons", "Additional services", b.externalServiceCharges);
+      }
+
+      // 4. Separator row
+      rows.push([
+        "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "0:00", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""
+      ]);
     });
 
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    // Add Grand Totals Row
+    const totalRow = Array(38).fill("");
+    totalRow[11] = totalQty;
+    totalRow[13] = totalGross.toFixed(2);
+    totalRow[17] = totalQty;
+    totalRow[18] = totalGross.toFixed(2);
+    totalRow[19] = totalVat.toFixed(2);
+    totalRow[20] = totalAmountSum.toFixed(2);
+    totalRow[34] = totalProfit.toFixed(2);
+    rows.push(totalRow);
 
-    const encodedUri = encodeURI(csvContent);
+    // Spacer rows
+    rows.push(Array(38).fill(""));
+    rows.push(Array(38).fill(""));
+
+    // Sales staff performance
+    const salesHeader1 = Array(38).fill("");
+    salesHeader1[4] = "SQ-V";
+    salesHeader1[5] = "SQ-X";
+    salesHeader1[6] = "Charter";
+    salesHeader1[7] = "Yacht";
+    salesHeader1[8] = "Alcohol";
+    rows.push(salesHeader1);
+
+    const salesHeader2 = Array(38).fill("");
+    salesHeader2[4] = "Sales Staff";
+    salesHeader2[5] = "SQ-V";
+    salesHeader2[6] = "SQ-X";
+    salesHeader2[7] = "CTR";
+    salesHeader2[8] = "YCH";
+    salesHeader2[9] = "ALC";
+    salesHeader2[11] = "Total Sales";
+    salesHeader2[12] = "%";
+    salesHeader2[13] = "Incentive (5%)";
+    rows.push(salesHeader2);
+
+    const grandTotalSales = filteredBookings.reduce((sum, b) => sum + Number(b.totalAmount), 0) || 1;
+
+    salesPersons.forEach(rep => {
+      const repBookings = filteredBookings.filter(b => b.salesPerson === rep.name);
+      const repSales = repBookings.reduce((sum, b) => sum + Number(b.totalAmount), 0);
+      const repPct = ((repSales / grandTotalSales) * 100).toFixed(0) + "%";
+      const repIncentive = (repSales * 0.05).toFixed(2);
+
+      const repRow = Array(38).fill("");
+      repRow[4] = rep.name;
+      repRow[5] = "-";
+      repRow[6] = "-";
+      repRow[7] = "-";
+      repRow[8] = "-";
+      repRow[9] = "-";
+      repRow[11] = repSales.toFixed(2);
+      repRow[12] = repPct;
+      repRow[13] = repIncentive;
+      rows.push(repRow);
+    });
+
+    // Accounts Ledger Table
+    rows.push(Array(38).fill(""));
+    rows.push(Array(38).fill(""));
+
+    const ledgerTitleRow = Array(38).fill("");
+    ledgerTitleRow[4] = `Silver Queen Yacht - Sales Ledger for ${filterMonth}`;
+    rows.push(ledgerTitleRow);
+
+    const ledgerHeaderRow = Array(38).fill("");
+    ledgerHeaderRow[11] = "Row Labels";
+    ledgerHeaderRow[12] = "Sum of GrossAmount";
+    ledgerHeaderRow[13] = "Sum of TotalAmount";
+    rows.push(ledgerHeaderRow);
+
+    const ledgerGroups = {};
+    filteredBookings.forEach(b => {
+      const ledgerName = b.salesPerson === "Office" ? "Customer (Office) - A/R" : `${b.salesPerson} Sales - A/R`;
+      if (!ledgerGroups[ledgerName]) {
+        ledgerGroups[ledgerName] = { gross: 0, total: 0 };
+      }
+      ledgerGroups[ledgerName].gross += Number(b.subtotal);
+      ledgerGroups[ledgerName].total += Number(b.totalAmount);
+    });
+
+    Object.entries(ledgerGroups).forEach(([label, vals]) => {
+      const ledgerRow = Array(38).fill("");
+      ledgerRow[11] = label;
+      ledgerRow[12] = vals.gross.toFixed(2);
+      ledgerRow[13] = vals.total.toFixed(2);
+      rows.push(ledgerRow);
+    });
+
+    const ledgerTotalRow = Array(38).fill("");
+    ledgerTotalRow[11] = "Grand Total";
+    ledgerTotalRow[12] = totalGross.toFixed(2);
+    ledgerTotalRow[13] = totalAmountSum.toFixed(2);
+    rows.push(ledgerTotalRow);
+
+    // Convert to CSV
+    const csvContent = "\uFEFF" + rows.map(r => r.map(escapeCsvCell).join(",")).join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `YachtFlow_Finance_Report_${filterMonth}.csv`);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `SilverQueen_Sales_Report_${filterMonth}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -388,6 +652,78 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
                     </tr>
                   );
                 })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Captain Cash Reconciliation Ledger */}
+      <div className="card">
+        <div className="card-header">
+          <div>
+            <h3>Captain On-Board Cash Reconciliation</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '4px 0 0' }}>
+              Verify and reconcile payments collected on-board by Yacht Captains
+            </p>
+          </div>
+          <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
+            Total On-Board Collections: ${bookings
+              .filter(b => b.paymentCollectedBy && b.paymentCollectedBy !== "Sales")
+              .reduce((sum, b) => sum + b.paymentAmount, 0)
+            }
+          </div>
+        </div>
+
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Booking ID</th>
+                <th>Guest</th>
+                <th>Yacht</th>
+                <th>Trip Date</th>
+                <th>Collected By</th>
+                <th>Payment Mode</th>
+                <th>Amount Collected</th>
+                <th>Boarding Status</th>
+                <th>Reconciliation Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bookings.filter(b => b.paymentCollectedBy && b.paymentCollectedBy !== "Sales").length === 0 ? (
+                <tr>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                    No on-board payments logged by captains yet.
+                  </td>
+                </tr>
+              ) : (
+                bookings
+                  .filter(b => b.paymentCollectedBy && b.paymentCollectedBy !== "Sales")
+                  .map(b => {
+                    const y = yachts.find(yacht => yacht.id === b.yachtId);
+                    return (
+                      <tr key={b.id}>
+                        <td><code style={{ fontSize: '0.75rem' }}>#{b.id.toUpperCase()}</code></td>
+                        <td><strong>{b.guestName}</strong></td>
+                        <td>{y ? y.name : 'Unknown Yacht'}</td>
+                        <td>{new Date(b.startDate).toLocaleDateString()}</td>
+                        <td>👤 {b.paymentCollectedBy}</td>
+                        <td><span className="badge badge-info">{b.paymentMode}</span></td>
+                        <td><strong className="text-success">${b.paymentAmount}</strong></td>
+                        <td>
+                          <span className={`badge ${b.boardingStatus === "Boarded" ? "badge-info" : b.boardingStatus === "Completed" ? "badge-success" : "badge-warning"}`}>
+                            {b.boardingStatus}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            ✔️ Ready to Reconcile
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })
               )}
             </tbody>
           </table>

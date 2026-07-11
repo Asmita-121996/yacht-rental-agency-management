@@ -24,6 +24,7 @@ export default function DashboardAdmin({
 
   // User creation state variables
   const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserType, setNewUserType] = useState("Regular User");
   const [newUserDesignation, setNewUserDesignation] = useState("Sales");
   const [newUserPassword, setNewUserPassword] = useState("");
@@ -73,14 +74,17 @@ export default function DashboardAdmin({
   // Submit User creation
   const handleUserSubmit = (e) => {
     e.preventDefault();
-    if (!newUserName.trim() || !newUserPassword.trim()) return;
+    if (!newUserName.trim() || !newUserEmail.trim() || !newUserPassword.trim()) return;
 
     let role = "sales";
     if (newUserDesignation === "Accounts") role = "accounts";
     if (newUserDesignation === "Admin") role = "admin";
+    if (newUserDesignation === "Captain") role = "captain";
+    if (newUserDesignation === "Agent") role = "agent";
 
     onAddUser({
       name: newUserName,
+      email: newUserEmail.trim(),
       type: newUserType,
       designation: newUserDesignation,
       role,
@@ -88,6 +92,7 @@ export default function DashboardAdmin({
     });
 
     setNewUserName("");
+    setNewUserEmail("");
     setNewUserPassword("");
   };
 
@@ -174,6 +179,17 @@ export default function DashboardAdmin({
               />
             </div>
 
+            <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
+              <label>Email Address *</label>
+              <input
+                type="email"
+                placeholder="e.g. wade@yachtflow.com"
+                value={newUserEmail}
+                onChange={(e) => setNewUserEmail(e.target.value)}
+                required
+              />
+            </div>
+
             <div className="form-group" style={{ flex: 1, minWidth: '130px' }}>
               <label>Designation</label>
               <select value={newUserDesignation} onChange={(e) => {
@@ -187,6 +203,8 @@ export default function DashboardAdmin({
               }}>
                 <option value="Sales">Sales</option>
                 <option value="Accounts">Accounts</option>
+                <option value="Captain">Captain</option>
+                <option value="Agent">Field Agent</option>
                 <option value="Admin">Admin</option>
               </select>
             </div>
@@ -220,6 +238,7 @@ export default function DashboardAdmin({
               <thead>
                 <tr>
                   <th>User Full Name</th>
+                  <th>Email Address</th>
                   <th>Designation</th>
                   <th>User Login Type</th>
                   <th>Password / PIN</th>
@@ -231,8 +250,9 @@ export default function DashboardAdmin({
                 {users.map(u => (
                   <tr key={u.id}>
                     <td><strong>{u.name}</strong></td>
+                    <td><code style={{ fontSize: '0.8rem' }}>{u.email}</code></td>
                     <td>
-                      <span className={`badge ${u.designation === 'Admin' ? 'badge-danger' : u.designation === 'Sales' ? 'badge-info' : 'badge-success'}`}>
+                      <span className={`badge ${u.designation === 'Admin' ? 'badge-danger' : u.designation === 'Sales' ? 'badge-info' : u.designation === 'Captain' ? 'badge-warning' : 'badge-success'}`}>
                         {u.designation}
                       </span>
                     </td>

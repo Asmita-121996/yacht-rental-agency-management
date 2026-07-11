@@ -2,22 +2,14 @@ import React, { useState, useEffect } from 'react';
 import DashboardSales from './components/DashboardSales';
 import DashboardAccounts from './components/DashboardAccounts';
 import DashboardAdmin from './components/DashboardAdmin';
+import DashboardCaptain from './components/DashboardCaptain';
+import AgentAvailability from './components/AgentAvailability';
 import Login from './components/Login';
 
 export default function App() {
   // Authentication & Users State
   const [users, setUsers] = useState([]);
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = localStorage.getItem("yachtflow_current_user");
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        return null;
-      }
-    }
-    return null;
-  });
+  const [currentUser, setCurrentUser] = useState(null);
 
   const [activeTab, setActiveTab] = useState("sales");
   const [themeMode, setThemeMode] = useState(() => {
@@ -33,34 +25,71 @@ export default function App() {
   // Fetch initial data from Express backend
   const loadBackendData = async () => {
     try {
-      setLoading(true);
       const [usersRes, yachtsRes, bookingsRes, defaultsRes] = await Promise.all([
-        fetch('/api/users').then(r => r.json()),
-        fetch('/api/yachts').then(r => r.json()),
-        fetch('/api/bookings').then(r => r.json()),
-        fetch('/api/settings').then(r => r.json())
+        fetch('/api/users').then(r => { 
+          if (r.status === 401) throw new Error("Unauthorized"); 
+          if (!r.ok) return []; 
+          return r.json(); 
+        }),
+        fetch('/api/yachts').then(r => { 
+          if (r.status === 401) throw new Error("Unauthorized"); 
+          if (!r.ok) return []; 
+          return r.json(); 
+        }),
+        fetch('/api/bookings').then(r => { 
+          if (r.status === 401) throw new Error("Unauthorized"); 
+          if (!r.ok) return []; 
+          return r.json(); 
+        }),
+        fetch('/api/settings').then(r => { 
+          if (r.status === 401) throw new Error("Unauthorized"); 
+          if (!r.ok) return { cateringPricePerGuest: 50 }; 
+          return r.json(); 
+        })
       ]);
-      setUsers(usersRes);
-      setYachts(yachtsRes);
-      setBookings(bookingsRes);
-      setSystemDefaults(defaultsRes);
+      setUsers(Array.isArray(usersRes) ? usersRes : []);
+      setYachts(Array.isArray(yachtsRes) ? yachtsRes : []);
+      setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
+      setSystemDefaults(defaultsRes && typeof defaultsRes === 'object' ? defaultsRes : { cateringPricePerGuest: 50 });
     } catch (err) {
       console.error("Failed to load YachtFlow backend configurations:", err);
-    } finally {
-      setLoading(false);
+      if (err.message === "Unauthorized") {
+        setCurrentUser(null);
+      }
     }
   };
 
+  // Check auth session on mount
   useEffect(() => {
-    loadBackendData();
+    const checkSession = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch('/api/auth/session');
+        const data = await res.json();
+        if (res.ok && data.user) {
+          setCurrentUser(data.user);
+        } else {
+          setCurrentUser(null);
+        }
+      } catch (err) {
+        console.error("Failed to check auth session status:", err);
+        setCurrentUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkSession();
   }, []);
 
-  // Persist local UI settings to local storage
+  // Fetch backend data whenever user is logged in
   useEffect(() => {
     if (currentUser) {
-      localStorage.setItem("yachtflow_current_user", JSON.stringify(currentUser));
+      setLoading(true);
+      loadBackendData().finally(() => setLoading(false));
     } else {
-      localStorage.removeItem("yachtflow_current_user");
+      setUsers([]);
+      setYachts([]);
+      setBookings([]);
     }
   }, [currentUser]);
 
@@ -84,6 +113,10 @@ export default function App() {
         setActiveTab("accounts");
       } else if (currentUser.role === "admin") {
         setActiveTab("admin");
+      } else if (currentUser.role === "captain") {
+        setActiveTab("captain");
+      } else if (currentUser.role === "agent") {
+        setActiveTab("agent");
       }
     }
   }, [currentUser]);
@@ -94,12 +127,18 @@ export default function App() {
 
   const handleLogin = (user) => {
     setCurrentUser(user);
-    // Reload data in case it changed
-    loadBackendData();
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    try {
+      setLoading(true);
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+      console.error("Failed during server logout:", err);
+    } finally {
+      setCurrentUser(null);
+      setLoading(false);
+    }
   };
 
   // User accounts CRUD handlers using Backend API
@@ -223,6 +262,27 @@ export default function App() {
     }
   };
 
+  const handleCheckinBooking = async (bookingId, checkinData) => {
+    try {
+      const res = await fetch(`/api/bookings/${bookingId}/checkin`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(checkinData)
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        return { success: false, error: data.error || "Failed to confirm boarding." };
+      }
+      // Refresh bookings log
+      const updatedBookings = await fetch('/api/bookings').then(r => r.json());
+      setBookings(updatedBookings);
+      return { success: true };
+    } catch (err) {
+      console.error("Checkin error:", err);
+      return { success: false, error: err.message };
+    }
+  };
+
   const handleAddYacht = async (yachtData) => {
     try {
       const res = await fetch('/api/yachts', {
@@ -323,6 +383,17 @@ export default function App() {
   // Get active sales persons based on user list
   const activeSalesReps = users.filter(u => u.role === "sales" && u.active);
 
+  // ── Agent: render isolated mobile availability view ──
+  if (currentUser.role === "agent") {
+    return (
+      <AgentAvailability
+        yachts={yachts}
+        bookings={bookings}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col" style={{ minHeight: '100vh' }}>
       
@@ -346,13 +417,23 @@ export default function App() {
         </div>
 
         <nav className="nav-links">
-          {/* Sales tab always visible for Sales, Accounts, and Admin */}
-          {(currentUser.role === "sales" || currentUser.role === "admin" || currentUser.role === "accounts") && (
+          {/* Sales tab visible for Sales, Accounts, Admin, and Captain */}
+          {(currentUser.role === "sales" || currentUser.role === "admin" || currentUser.role === "accounts" || currentUser.role === "captain") && (
             <button
               className={`nav-link ${activeTab === "sales" ? "active" : ""}`}
               onClick={() => setActiveTab("sales")}
             >
               🗓️ Booking Calendar
+            </button>
+          )}
+
+          {/* Captain tab visible for Captain and Admin */}
+          {(currentUser.role === "captain" || currentUser.role === "admin") && (
+            <button
+              className={`nav-link ${activeTab === "captain" ? "active" : ""}`}
+              onClick={() => setActiveTab("captain")}
+            >
+              ⚓ Boarding Log
             </button>
           )}
 
@@ -424,6 +505,16 @@ export default function App() {
             onDeleteUser={handleDeleteUser}
             onUpdateUserPassword={handleUpdateUserPassword}
             onUpdateSystemDefaults={handleUpdateSystemDefaults}
+          />
+        )}
+
+        {activeTab === "captain" && (
+          <DashboardCaptain
+            bookings={bookings}
+            yachts={yachts}
+            currentPersona={currentUser}
+            onCheckinBooking={handleCheckinBooking}
+            systemDefaults={systemDefaults}
           />
         )}
       </main>

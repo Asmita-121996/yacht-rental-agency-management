@@ -437,8 +437,12 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   border-bottom: 1px solid var(--border-color);
   position: relative;
-  height: 54px;
+  height: 64px;
   align-items: center;
+}
+
+.timeline-row:hover {
+  z-index: 15;
 }
 
 .timeline-row:last-child {
@@ -474,27 +478,38 @@ input:focus, select:focus, textarea:focus {
   min-width: 60px;
   border-right: 1px solid var(--border-color);
   height: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.timeline-slot-hour.clickable-slot:hover {
+  background-color: rgba(99, 102, 241, 0.08);
 }
 
 .timeline-booking-block {
   position: absolute;
-  height: 70%;
-  top: 15%;
-  border-radius: 4px;
+  height: 80%;
+  top: 10%;
+  border-radius: 6px;
   font-size: 0.75rem;
-  padding: 4px 8px;
+  padding: 6px 10px;
   color: white;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-weight: 500;
   cursor: pointer;
   transition: transform 0.2s ease, opacity 0.2s ease;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timeline-booking-label {
+  display: block;
+  width: 100%;
 }
 
 .timeline-booking-block:hover {
-  transform: scaleY(1.08);
+  transform: scaleY(1.04);
   opacity: 0.95;
 }
 
@@ -506,6 +521,33 @@ input:focus, select:focus, textarea:focus {
 }
 .bg-booking-completed {
   background-color: #10b981; /* Emerald */
+}
+
+/* Premium Floating fixed-position tooltip */
+.timeline-booking-fixed-tooltip {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  pointer-events: none;
+  backdrop-filter: var(--glass-blur);
+  transition: opacity 0.15s ease-out;
+}
+
+.timeline-booking-fixed-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: var(--border-color) transparent transparent transparent;
 }
 
 /* Tables styling */
@@ -596,12 +638,14 @@ tr:hover td {
   border: 1px solid var(--border-color);
   border-radius: 12px;
   width: 100%;
-  max-width: 600px;
+  max-width: 760px;
   box-shadow: var(--shadow-lg);
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .modal-header {
@@ -614,6 +658,9 @@ tr:hover td {
 
 .modal-body {
   padding: 20px;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
 .modal-footer {
@@ -928,6 +975,22 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   0% { transform: scale(1); }
   50% { transform: scale(1.01); }
   100% { transform: scale(1); }
+}
+
+.spinner-mini {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 
