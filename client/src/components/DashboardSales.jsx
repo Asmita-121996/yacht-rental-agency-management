@@ -368,15 +368,8 @@ export default function DashboardSales({
     }
 
     // Check conflict (convert to UTC ISO strings for timezone-agnostic check)
-    const conflict = checkBookingConflict(
-      yachtId,
-      new Date(startDate).toISOString(),
-      new Date(endDate).toISOString(),
-      editingBooking?.id || null,
-      bookings
-    );
-    if (conflict) {
-      setFormError(conflict.message);
+    if (liveConflict) {
+      setFormError(liveConflict.message);
       return;
     }
 
@@ -404,7 +397,6 @@ export default function DashboardSales({
       adults: Number(adults),
       children: Number(children),
       totalGuests,
-      pickupLocation,
       cateringEnabled: catCost > 0,
       decorationCharges: decCost,
       waterSlideCharges: slideCost,
@@ -460,6 +452,28 @@ export default function DashboardSales({
   const tempSubtotal = yachtCost + decCost + slideCost + skiCost + catCost + othCost;
   const tempVatAmount = Math.round(tempSubtotal * (Number(vatRate) / 100));
   const tempTotalAmount = tempSubtotal + tempVatAmount;
+
+  // Reactively calculate booking conflicts or datetime validations
+  const liveConflict = (() => {
+    try {
+      if (!startDate || !endDate) return null;
+      return checkBookingConflict(
+        yachtId,
+        new Date(startDate).toISOString(),
+        new Date(endDate).toISOString(),
+        editingBooking?.id || null,
+        bookings
+      );
+    } catch (e) {
+      return null;
+    }
+  })();
+
+  // Filter for pending or confirmed bookings whose end time has already passed on the currently selected date
+  const overduePendingBookings = bookings.filter(b => {
+    const isSameDay = b.startDate && b.startDate.slice(0, 10) === selectedDate;
+    return (b.status === "Pending" || b.status === "Confirmed") && new Date(b.endDate) < new Date() && isSameDay;
+  });
 
   // Filtered Bookings for the list
   const filteredBookings = bookings.filter(booking => {
@@ -540,35 +554,125 @@ export default function DashboardSales({
 
   return (
     <div className="flex flex-col gap-24">
-      {/* Date Navigation & Actions */}
-      <div className="scheduler-header card">
-        <div className="flex align-center gap-16">
-          <h2 style={{ border: 'none', margin: 0 }}>Yacht Scheduler</h2>
-          <div className="date-navigator">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ fontWeight: 600 }}
-            />
+      {/* Overdue Pending Bookings Alert Banner */}
+      {overduePendingBookings.length > 0 && (
+        <div className="card" style={{
+          borderLeft: '4px solid #f59e0b',
+          backgroundColor: 'rgba(245, 158, 11, 0.05)',
+          padding: '18px 20px',
+          borderRadius: '12px',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.05)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>⚠️</span>
+            <div style={{ flex: 1, minWidth: '200px' }}>
+              <h3 style={{ margin: 0, fontSize: '0.98rem', color: '#f59e0b', fontWeight: 700 }}>
+                Overdue Enquiries & Bookings ({overduePendingBookings.length})
+              </h3>
+              <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                These pending or confirmed bookings were scheduled in the past but never finalized or marked as completed. Click any card to resolve.
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+            {overduePendingBookings.map(b => {
+              const yachtObj = yachts.find(y => y.id === b.yachtId);
+              const isOwnBooking = b.salesPerson && currentPersona?.name && b.salesPerson.toLowerCase().trim() === currentPersona.name.toLowerCase().trim();
+              return (
+                <div
+                  key={b.id}
+                  onClick={() => {
+                    if (b.startDate) {
+                      setSelectedDate(b.startDate.slice(0, 10));
+                    }
+                    handleOpenEditBooking(b);
+                  }}
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '8px',
+                    padding: '12px 14px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  className="overdue-item-hover"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>{b.guestName}</strong>
+                    <span style={{
+                      fontSize: '0.65rem',
+                      fontWeight: 700,
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      background: b.status === 'Confirmed' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                      color: b.status === 'Confirmed' ? '#ef4444' : '#f59e0b',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px'
+                    }}>{b.status === 'Confirmed' ? 'Overdue Booking' : 'Overdue Enquiry'}</span>
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>⛵</span>
+                      <strong>{yachtObj?.name || 'Unknown Yacht'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>⏰</span>
+                      <span>{new Date(b.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} · {new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div style={{
+                      borderTop: '1px solid var(--border-color)',
+                      paddingTop: '8px',
+                      marginTop: '4px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      fontSize: '0.72rem'
+                    }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        👤 {b.salesPerson}
+                        {isOwnBooking && (
+                          <span style={{
+                            fontSize: '0.62rem',
+                            fontWeight: 700,
+                            background: 'var(--brand)',
+                            color: '#fff',
+                            padding: '1px 5px',
+                            borderRadius: '4px',
+                            marginLeft: '4px'
+                          }}>Me</span>
+                        )}
+                      </span>
+                      <span style={{ color: 'var(--brand)', fontWeight: 600 }}>Update Status →</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        {!isReadOnly && (
-          <button className="btn btn-primary" onClick={handleOpenNewBooking}>
-            + Create New Booking
-          </button>
-        )}
-      </div>
+      )}
 
 
 
       {/* Scheduler Timeline Map */}
       <div className="card">
         <div className="flex justify-between align-center mb-24" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Visual Occupancy Grid ({new Date(selectedDate).toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })})</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: '4px 0 0' }}>Shared workspace: showing live availability across all sales representatives</p>
+          <div className="flex align-center gap-16">
+            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>Yacht Availability:</span>
+            <div className="date-navigator" style={{ margin: 0 }}>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                style={{ fontWeight: 600, padding: '4px 10px', fontSize: '0.9rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
+              />
+            </div>
           </div>
+          {!isReadOnly && (
+            <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.85rem' }} onClick={handleOpenNewBooking}>
+              + Create New Booking
+            </button>
+          )}
         </div>
         <div className="timeline-grid">
           {/* Header Hours Row */}
@@ -764,7 +868,6 @@ export default function DashboardSales({
                 <th>Pax (Est vs Act)</th>
                 <th>Total Bill</th>
                 <th>Paid</th>
-                <th>Boarding</th>
                 <th>Status</th>
                 <th>Sales Rep</th>
                 <th>Actions</th>
@@ -773,7 +876,7 @@ export default function DashboardSales({
             <tbody>
               {filteredBookings.length === 0 ? (
                 <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
                     No bookings found matching search criteria.
                   </td>
                 </tr>
@@ -816,11 +919,6 @@ export default function DashboardSales({
                             by {b.paymentCollectedBy}
                           </div>
                         )}
-                      </td>
-                      <td>
-                        <span className={`badge ${b.boardingStatus === "Boarded" ? "badge-info" : b.boardingStatus === "Completed" ? "badge-success" : "badge-warning"}`}>
-                          {b.boardingStatus || "Scheduled"}
-                        </span>
                       </td>
                       <td>
                         <span className={`badge ${badgeClass}`}>{b.status}</span>
@@ -946,6 +1044,25 @@ export default function DashboardSales({
                     />
                   </div>
                 </div>
+
+                {liveConflict && (
+                  <div style={{
+                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                    color: '#ef4444',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    fontSize: '0.78rem',
+                    marginBottom: '12px',
+                    lineHeight: '1.4',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}>
+                    <span style={{ fontSize: '1rem' }}>⚠️</span>
+                    <span>{liveConflict.message}</span>
+                  </div>
+                )}
 
                 {/* Row 3: Adults + Children + Booking Status */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 100px) minmax(80px, 100px) 1fr', gap: '12px', marginBottom: '16px' }}>
@@ -1090,7 +1207,15 @@ export default function DashboardSales({
                 <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Sales by:</span>
                   {currentPersona?.role === "sales" ? (
-                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{currentPersona.name}</span>
+                    <select
+                      value={salesPersonName}
+                      onChange={(e) => setSalesPersonName(e.target.value)}
+                      disabled={isReadOnly}
+                      style={{ padding: '4px 8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
+                    >
+                      <option value={currentPersona.name}>{currentPersona.name}</option>
+                      <option value="Office">Office</option>
+                    </select>
                   ) : (
                     <select
                       value={salesPersonName}
@@ -1101,6 +1226,7 @@ export default function DashboardSales({
                       {salesPersons.map(s => (
                         <option key={s.id} value={s.name}>{s.name}</option>
                       ))}
+                      <option value="Office">Office</option>
                     </select>
                   )}
                 </div>
@@ -1155,7 +1281,6 @@ export default function DashboardSales({
                   <h4 style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', marginBottom: '8px' }}>Guest Details</h4>
                   <div className="invoice-row"><span>Guest Name:</span><strong>{invoiceBooking.guestName}</strong></div>
                   <div className="invoice-row"><span>Total Guests:</span><span>{invoiceBooking.totalGuests} ({invoiceBooking.adults} Adults, {invoiceBooking.children} Kids)</span></div>
-                  <div className="invoice-row"><span>Pickup Location:</span><span>{invoiceBooking.pickupLocation}</span></div>
                   <div className="invoice-row"><span>Sales Consultant:</span><span>{invoiceBooking.salesPerson}</span></div>
                 </div>
 
