@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently --kill-others \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
     "build:client": "npm run build --prefix client",
-    "build": "npm run build:client && npx prisma generate --schema=server/prisma/schema.prisma",
+    "build": "npm install --prefix client && npm install --prefix server && npm run build:client && npx prisma generate --schema=server/prisma/schema.prisma",
     "start": "node server/index.js",
     "db:seed": "node server/seed.js"
   },
