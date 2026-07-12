@@ -993,4 +993,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+.overdue-item-hover:hover {
+  transform: translateY(-2px);
+  border-color: #f59e0b !important;
+  box-shadow: 0 4px 16px rgba(245, 158, 11, 0.12);
+  background-color: var(--bg-tertiary) !important;
+}
+
+
 
