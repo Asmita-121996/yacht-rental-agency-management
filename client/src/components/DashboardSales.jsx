@@ -376,7 +376,7 @@ export default function DashboardSales({
     // Calculate totals
     const yacht = yachts.find(y => y.id === yachtId);
     const exactHours = (endVal - startVal) / (1000 * 60 * 60);
-    const totalGuests = adults + children;
+    const totalGuests = (Number(adults) || 0) + (Number(children) || 0);
 
     const yachtCost = Math.round((yacht?.hourlyRate || 0) * exactHours);
     const decCost = Number(decorationCharges) || 0;
@@ -394,8 +394,8 @@ export default function DashboardSales({
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
       durationHours: parseFloat(exactHours.toFixed(2)),
-      adults: Number(adults),
-      children: Number(children),
+      adults: Number(adults) || 0,
+      children: Number(children) || 0,
       totalGuests,
       cateringEnabled: catCost > 0,
       decorationCharges: decCost,
