@@ -215,11 +215,14 @@ router.put('/:id/checkin', requireAuth, async (req, res) => {
     const cateringSetting = await db.system_defaults.findUnique({ where: { key: 'cateringPricePerGuest' } });
     const cateringPrice = cateringSetting ? Number(cateringSetting.value) : 50;
 
-    // Calculate updated yacht base cost
+    // Calculate updated yacht base cost — honour any custom offered rate
     let yachtCost = Number(booking.subtotal); // fallback to existing
     if (yacht) {
       const duration = Number(booking.duration_hours);
-      yachtCost = duration * Number(yacht.hourly_rate);
+      const effectiveRate = booking.offered_hourly_rate !== null
+        ? Number(booking.offered_hourly_rate)
+        : Number(yacht.hourly_rate);
+      yachtCost = duration * effectiveRate;
     }
 
     // Calculate updated catering fee based on actual boarding guests count
