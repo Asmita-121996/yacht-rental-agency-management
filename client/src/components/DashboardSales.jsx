@@ -117,7 +117,7 @@ export default function DashboardSales({
     });
     
     const total = maxHour - minHour;
-    const hours = Array.from({ length: total + 1 }, (_, i) => minHour + i);
+    const hours = Array.from({ length: total }, (_, i) => minHour + i);
     return { minHour, maxHour, totalHours: total, hoursArray: hours };
   };
 
@@ -1072,7 +1072,7 @@ export default function DashboardSales({
                       type="number"
                       min="1"
                       value={adults}
-                      onChange={(e) => setAdults(Number(e.target.value))}
+                      onChange={(e) => setAdults(e.target.value === '' ? '' : Number(e.target.value))}
                       disabled={isReadOnly}
                     />
                   </div>
@@ -1082,7 +1082,7 @@ export default function DashboardSales({
                       type="number"
                       min="0"
                       value={children}
-                      onChange={(e) => setChildren(Number(e.target.value))}
+                      onChange={(e) => setChildren(e.target.value === '' ? '' : Number(e.target.value))}
                       disabled={isReadOnly}
                     />
                   </div>
@@ -1106,23 +1106,23 @@ export default function DashboardSales({
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>Decoration ($)</label>
-                      <input type="number" min="0" value={decorationCharges} onChange={(e) => setDecorationCharges(Number(e.target.value))} disabled={isReadOnly} />
+                      <input type="number" min="0" value={decorationCharges} onChange={(e) => setDecorationCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>Water Slide ($)</label>
-                      <input type="number" min="0" value={waterSlideCharges} onChange={(e) => setWaterSlideCharges(Number(e.target.value))} disabled={isReadOnly} />
+                      <input type="number" min="0" value={waterSlideCharges} onChange={(e) => setWaterSlideCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>Jet Ski ($)</label>
-                      <input type="number" min="0" value={jetSkiCharges} onChange={(e) => setJetSkiCharges(Number(e.target.value))} disabled={isReadOnly} />
+                      <input type="number" min="0" value={jetSkiCharges} onChange={(e) => setJetSkiCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>Catering ($)</label>
-                      <input type="number" min="0" value={cateringCharges} onChange={(e) => setCateringCharges(Number(e.target.value))} disabled={isReadOnly} />
+                      <input type="number" min="0" value={cateringCharges} onChange={(e) => setCateringCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>Other Service ($)</label>
-                      <input type="number" min="0" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} disabled={isReadOnly} />
+                      <input type="number" min="0" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
                     </div>
                     <div className="form-group" style={{ margin: 0 }}>
                       <label>VAT Rate</label>
@@ -1192,11 +1192,11 @@ export default function DashboardSales({
                         min="0"
                         max={tempTotalAmount}
                         value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(Number(e.target.value))}
+                        onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
                         disabled={isReadOnly}
                       />
                       <small style={{ color: 'var(--text-muted)' }}>
-                        Remaining: ${tempTotalAmount - paymentAmount}
+                        Remaining: ${tempTotalAmount - (Number(paymentAmount) || 0)}
                       </small>
                     </div>
                   </div>
