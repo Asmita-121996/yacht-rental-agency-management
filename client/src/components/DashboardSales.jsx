@@ -1206,17 +1206,7 @@ export default function DashboardSales({
                 {/* Salesperson — far left */}
                 <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Sales by:</span>
-                  {currentPersona?.role === "sales" ? (
-                    <select
-                      value={salesPersonName}
-                      onChange={(e) => setSalesPersonName(e.target.value)}
-                      disabled={isReadOnly}
-                      style={{ padding: '4px 8px', fontSize: '0.85rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
-                    >
-                      <option value={currentPersona.name}>{currentPersona.name}</option>
-                      <option value="Office">Office</option>
-                    </select>
-                  ) : (
+                  {currentPersona?.role === "admin" ? (
                     <select
                       value={salesPersonName}
                       onChange={(e) => setSalesPersonName(e.target.value)}
@@ -1228,6 +1218,8 @@ export default function DashboardSales({
                       ))}
                       <option value="Office">Office</option>
                     </select>
+                  ) : (
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{salesPersonName || currentPersona?.name}</span>
                   )}
                 </div>
                 {!isReadOnly && editingBooking && bookingStatus !== "Cancelled" && (
