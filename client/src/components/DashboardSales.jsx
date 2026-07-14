@@ -50,6 +50,7 @@ export default function DashboardSales({
   // New/Edit Booking Form modal state
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
+  const [toast, setToast] = useState(null); // { message: string, type: 'error' | 'success' }
   
   // Form fields
   const [guestName, setGuestName] = useState("");
@@ -388,12 +389,15 @@ Please arrive 15 minutes early. Thank you!`;
 
     const triggerFormError = (msg) => {
       setFormError(msg);
-      alert(`⚠️ Save Booking Failed:\n\n${msg}`);
+      setToast({ message: msg, type: 'error' });
       // Scroll modal body to top smoothly so the error message is visible
       const modalBody = document.querySelector('.modal-content');
       if (modalBody) {
         modalBody.scrollTo({ top: 0, behavior: 'smooth' });
       }
+      setTimeout(() => {
+        setToast(prev => prev && prev.message === msg ? null : prev);
+      }, 6000);
     };
 
     // Basic Validation
@@ -1481,6 +1485,70 @@ Please arrive 15 minutes early. Thank you!`;
           )}
           <div><strong>Status:</strong> <span className={`badge ${hoveredBooking.status === "Pending" ? "badge-warning" : hoveredBooking.status === "Completed" ? "badge-success" : "badge-info"}`}>{hoveredBooking.status}</span></div>
         </div>
+      )}
+
+      {/* FLOATING TOAST NOTIFICATION FOR ERRORS */}
+      {toast && (
+        <>
+          <style>{`
+            @keyframes slideIn {
+              from { transform: translateY(-50px) scale(0.9); opacity: 0; }
+              to { transform: translateY(0) scale(1); opacity: 1; }
+            }
+          `}</style>
+          <div style={{
+            position: 'fixed',
+            top: '32px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 100000,
+            backgroundColor: toast.type === 'error' ? '#991b1b' : '#065f46',
+            color: '#ffffff',
+            border: `1px solid ${toast.type === 'error' ? '#f87171' : '#34d399'}`,
+            borderRadius: '12px',
+            padding: '16px 24px',
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5), 0 10px 10px -5px rgba(0,0,0,0.3)',
+            maxWidth: '450px',
+            minWidth: '320px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '16px',
+            animation: 'slideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards'
+          }}>
+            <span style={{ fontSize: '1.5rem', display: 'flex', alignItems: 'center' }}>
+              {toast.type === 'error' ? '⚠️' : '✅'}
+            </span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em', color: toast.type === 'error' ? '#fecaca' : '#a7f3d0' }}>
+                {toast.type === 'error' ? 'Save Booking Failed' : 'Action Success'}
+              </div>
+              <div style={{ fontSize: '0.85rem', opacity: 0.95, lineHeight: '1.4' }}>
+                {toast.message}
+              </div>
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#ffffff',
+                opacity: 0.7,
+                cursor: 'pointer',
+                fontSize: '1.3rem',
+                padding: '4px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'opacity 0.2s',
+                marginLeft: '8px'
+              }}
+              onMouseEnter={(e) => e.target.style.opacity = '1'}
+              onMouseLeave={(e) => e.target.style.opacity = '0.7'}
+            >
+              &times;
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
