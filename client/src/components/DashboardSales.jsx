@@ -51,6 +51,7 @@ export default function DashboardSales({
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState(null);
   const [toast, setToast] = useState(null); // { message: string, type: 'error' | 'success' }
+  const [whatsAppWebPrompt, setWhatsAppWebPrompt] = useState(null); // { guestName, phoneNumber, text }
   
   // Form fields
   const [guestName, setGuestName] = useState("");
@@ -379,7 +380,11 @@ Please arrive 15 minutes early. Thank you!`;
 
     const encodedText = encodeURIComponent(messageText);
     const cleanPhone = phoneNumber.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}?text=${encodedText}`, '_blank');
+    let finalPhone = cleanPhone;
+    if (cleanPhone.length === 10 && /^[6-9]/.test(cleanPhone)) {
+      finalPhone = '91' + cleanPhone; // Auto-prefix India code if it's a 10-digit number starting with 6-9
+    }
+    window.open(`https://wa.me/${finalPhone}?text=${encodedText}`, '_blank');
   };
 
   // Handle form submission (Create or Update)
@@ -478,6 +483,33 @@ Please arrive 15 minutes early. Thank you!`;
         triggerFormError(result.error);
       } else {
         setShowFormModal(false);
+        // Show WhatsApp Web prompt if confirmed and manual web fallback is active
+        if (bookingStatus === 'Confirmed' && phoneNumber && (!systemDefaults || systemDefaults.whatsappProvider === 'none')) {
+          const yacht = yachts.find(y => y.id === yachtId);
+          const start = new Date(startDate).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+          const totalAmount = tempTotalAmount;
+          const paidAmount = Number(paymentAmount) || 0;
+          const remaining = Math.max(0, totalAmount - paidAmount);
+
+          const messageText = `Hello ${guestName}, your yacht charter booking has been CONFIRMED.
+Yacht: ${yacht ? yacht.name : 'SQX Yacht'}
+Start: ${start}
+Duration: ${formDuration} hour(s)
+Total: $${totalAmount.toFixed(2)}
+Paid: $${paidAmount.toFixed(2)}
+Remaining: $${remaining.toFixed(2)}
+Please arrive 15 minutes early. Thank you!`;
+
+          setWhatsAppWebPrompt({
+            guestName,
+            phoneNumber,
+            text: messageText
+          });
+        } else {
+          // Standard success toast
+          setToast({ message: `Booking for ${guestName} saved successfully!`, type: 'success' });
+          setTimeout(() => setToast(null), 5000);
+        }
       }
     };
     
@@ -1549,6 +1581,77 @@ Please arrive 15 minutes early. Thank you!`;
             </button>
           </div>
         </>
+      )}
+
+      {/* WHATSAPP WEB POST-CONFIRMATION PROMPT */}
+      {whatsAppWebPrompt && (
+        <div className="modal-overlay" style={{ zIndex: 101000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ maxWidth: '480px', textAlign: 'center', padding: '32px', borderRadius: '16px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '16px', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.2))' }}>🎉</div>
+            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '1.4rem', color: '#10b981', fontWeight: 700 }}>Booking Saved Successfully!</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', marginBottom: '24px', lineHeight: '1.6' }}>
+              The booking for <strong>{whatsAppWebPrompt.guestName}</strong> is now <strong>Confirmed</strong>. 
+              Would you like to open <strong>WhatsApp Web</strong> to share the boarding details with the customer?
+            </p>
+            
+            <div style={{ 
+              backgroundColor: 'var(--bg-tertiary)', 
+              padding: '16px', 
+              borderRadius: '10px', 
+              fontSize: '0.82rem', 
+              textAlign: 'left', 
+              marginBottom: '24px', 
+              border: '1px solid var(--border-color)', 
+              maxHeight: '140px', 
+              overflowY: 'auto', 
+              whiteSpace: 'pre-wrap', 
+              color: 'var(--text-main)', 
+              fontFamily: 'monospace',
+              lineHeight: '1.5'
+            }}>
+              {whatsAppWebPrompt.text}
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-secondary" 
+                onClick={() => setWhatsAppWebPrompt(null)}
+                style={{ padding: '10px 24px', fontSize: '0.95rem' }}
+              >
+                Dismiss
+              </button>
+              <button 
+                type="button" 
+                className="btn" 
+                style={{ 
+                  backgroundColor: '#25D366', 
+                  borderColor: '#25D366', 
+                  color: '#fff', 
+                  fontWeight: 'bold', 
+                  padding: '10px 24px', 
+                  fontSize: '0.95rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(37, 211, 102, 0.3)'
+                }}
+                onClick={() => {
+                  const cleanPhone = whatsAppWebPrompt.phoneNumber.replace(/\D/g, '');
+                  let finalPhone = cleanPhone;
+                  if (cleanPhone.length === 10 && /^[6-9]/.test(cleanPhone)) {
+                    finalPhone = '91' + cleanPhone; // Auto-prefix India code
+                  }
+                  const encodedText = encodeURIComponent(whatsAppWebPrompt.text);
+                  window.open(`https://wa.me/${finalPhone}?text=${encodedText}`, '_blank');
+                  setWhatsAppWebPrompt(null);
+                }}
+              >
+                💬 Send WhatsApp Message
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
