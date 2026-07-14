@@ -1190,13 +1190,13 @@ Best regards,
               )}
             </div>
 
-            <div className="timeline-container">
+            <div className="timeline-grid">
               {/* Timeline Header (Hours) */}
-              <div className="timeline-header-row">
-                <div className="timeline-yacht-col-header">Yacht Fleet</div>
-                <div className="timeline-slots-wrapper">
+              <div className="timeline-hours">
+                <div className="timeline-yacht-label" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Yacht Fleet</div>
+                <div className="timeline-slots">
                   {hoursArray.map(hour => (
-                    <div key={hour} className="timeline-hour-label">
+                    <div key={hour} className="timeline-hour-cell">
                       {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                     </div>
                   ))}
@@ -1207,12 +1207,14 @@ Best regards,
               {yachts.map(yacht => {
                 const yachtBookings = getTimelineBookingsForYacht(yacht.id);
                 return (
-                  <div key={yacht.id} className="timeline-yacht-row">
-                    <div className="timeline-yacht-info-col">
-                      <strong style={{ display: 'block', color: 'var(--text-main)' }}>{yacht.name}</strong>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max Cap: {yacht.capacity} pax</span>
+                  <div key={yacht.id} className="timeline-row">
+                    <div className="timeline-yacht-label">
+                      <div>
+                        <strong style={{ display: 'block', color: 'var(--text-main)' }}>{yacht.name}</strong>
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>Cap: {yacht.capacity} pax</span>
+                      </div>
                     </div>
-                    <div className="timeline-slots-wrapper timeline-grid-bg">
+                    <div className="timeline-slots">
                       {/* Hour slot guidelines */}
                       {hoursArray.map(hour => (
                         <div 
