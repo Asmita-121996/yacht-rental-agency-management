@@ -1190,13 +1190,15 @@ Best regards,
               )}
             </div>
 
-            <div className="timeline-grid">
+            <div className="timeline-grid" style={{ display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--bg-secondary)', overflowX: 'auto', width: '100%' }}>
               {/* Timeline Header (Hours) */}
-              <div className="timeline-hours">
-                <div className="timeline-yacht-label" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Yacht Fleet</div>
-                <div className="timeline-slots">
+              <div className="timeline-hours" style={{ display: 'flex', flexDirection: 'row', borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', width: '100%', height: '40px', alignItems: 'center' }}>
+                <div className="timeline-yacht-label" style={{ backgroundColor: 'var(--bg-tertiary)', display: 'flex', alignItems: 'center', width: '140px', minWidth: '140px', padding: '0 12px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', borderRight: '1px solid var(--border-color)', position: 'sticky', left: 0, zIndex: 10, height: '100%' }}>
+                  Yacht Fleet
+                </div>
+                <div className="timeline-slots" style={{ display: 'flex', flexDirection: 'row', flex: 1, position: 'relative', height: '100%', alignItems: 'center' }}>
                   {hoursArray.map(hour => (
-                    <div key={hour} className="timeline-hour-cell">
+                    <div key={hour} className="timeline-hour-cell" style={{ flex: 1, minWidth: '60px', textAlign: 'center', padding: '8px 4px', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', borderRight: '1px solid var(--border-color)' }}>
                       {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                     </div>
                   ))}
@@ -1207,14 +1209,14 @@ Best regards,
               {yachts.map(yacht => {
                 const yachtBookings = getTimelineBookingsForYacht(yacht.id);
                 return (
-                  <div key={yacht.id} className="timeline-row">
-                    <div className="timeline-yacht-label">
+                  <div key={yacht.id} className="timeline-row" style={{ display: 'flex', flexDirection: 'row', borderBottom: '1px solid var(--border-color)', position: 'relative', height: '64px', alignItems: 'center', width: '100%' }}>
+                    <div className="timeline-yacht-label" style={{ display: 'flex', alignItems: 'center', width: '140px', minWidth: '140px', padding: '0 12px', fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', borderRight: '1px solid var(--border-color)', backgroundColor: 'var(--bg-secondary)', position: 'sticky', left: 0, zIndex: 10, height: '100%' }}>
                       <div>
-                        <strong style={{ display: 'block', color: 'var(--text-main)' }}>{yacht.name}</strong>
+                        <strong style={{ display: 'block', color: 'var(--text-main)', fontSize: '0.85rem' }}>{yacht.name}</strong>
                         <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 400 }}>Cap: {yacht.capacity} pax</span>
                       </div>
                     </div>
-                    <div className="timeline-slots">
+                    <div className="timeline-slots" style={{ display: 'flex', flexDirection: 'row', flex: 1, position: 'relative', height: '100%' }}>
                       {/* Hour slot guidelines */}
                       {hoursArray.map(hour => (
                         <div 
@@ -1222,7 +1224,7 @@ Best regards,
                           className={`timeline-slot-hour ${isReadOnly ? '' : 'clickable-slot'}`} 
                           onClick={() => handleGridSlotClick(yacht.id, hour)}
                           title={isReadOnly ? undefined : `Book ${yacht.name} starting at ${hour.toString().padStart(2, '0')}:00`}
-                          style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+                          style={{ flex: 1, minWidth: '60px', borderRight: '1px solid var(--border-color)', height: '100%', cursor: isReadOnly ? 'default' : 'pointer', transition: 'background-color 0.15s ease' }}
                         />
                       ))}
                       
@@ -1240,7 +1242,7 @@ Best regards,
                           <div
                             key={b.id}
                             className={`timeline-booking-block ${statusClass}`}
-                            style={blockStyle}
+                            style={{ ...blockStyle, position: 'absolute', height: '80%', top: '10%', borderRadius: '6px', fontSize: '0.75rem', padding: '6px 10px', color: 'white', overflow: 'hidden', fontWeight: 500, cursor: 'pointer', zIndex: 2, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
                             onClick={(e) => { e.stopPropagation(); handleOpenEditBooking(b); }}
                             onMouseEnter={(e) => {
                               setHoveredBooking(b);
