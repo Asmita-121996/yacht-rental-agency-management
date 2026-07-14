@@ -1682,7 +1682,7 @@ Best regards,
             {/* Pricing Guide Card */}
             <div className="card" style={{ padding: '24px' }}>
               <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Fleet Rates & Capacities</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {yachts.map(y => (
                   <div key={y.id} style={{ 
                     padding: '12px 16px', 
