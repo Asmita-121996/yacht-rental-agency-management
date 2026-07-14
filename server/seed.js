@@ -1,83 +1,32 @@
 import pg from 'pg';
-import fs from 'fs';
-import path from 'path';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const { Client, Pool } = pg;
+const { Pool } = pg;
 
 function hashPassword(pwd) {
   return crypto.createHash('sha256').update(pwd).digest('hex');
 }
 
-async function ensureDatabaseExists() {
-  const pgUser = process.env.PGUSER || process.env.USER || 'postgres';
-  const pgHost = process.env.PGHOST || '127.0.0.1';
-  const pgPassword = process.env.PGPASSWORD || '';
-  const pgPort = parseInt(process.env.PGPORT || '5432', 10);
-  const targetDb = process.env.PGDATABASE || 'yachtflow';
-
-  console.log(`Connecting to default 'postgres' database on ${pgHost}:${pgPort} to check if database '${targetDb}' exists...`);
-  
-  const client = new Client({
-    user: pgUser,
-    host: pgHost,
-    database: 'postgres',
-    password: pgPassword,
-    port: pgPort,
-  });
-
-  try {
-    await client.connect();
-    const res = await client.query(`SELECT 1 FROM pg_database WHERE datname = $1`, [targetDb]);
-    
-    if (res.rowCount === 0) {
-      console.log(`Database '${targetDb}' does not exist. Creating database...`);
-      // CREATE DATABASE cannot run inside a transaction block, pg library supports direct execution
-      await client.query(`CREATE DATABASE ${targetDb}`);
-      console.log(`Database '${targetDb}' created successfully.`);
-    } else {
-      console.log(`Database '${targetDb}' already exists.`);
-    }
-  } catch (err) {
-    console.error("Error checking/creating database:", err.message);
-    console.log("Proceeding to connect directly to the database. Make sure it is created.");
-  } finally {
-    await client.end();
-  }
-}
-
 async function runSeed() {
-  await ensureDatabaseExists();
+  // Use DATABASE_URL directly (Railway) or fall back to individual PG vars (local)
+  const connectionString = process.env.DATABASE_URL;
+  const pool = connectionString
+    ? new Pool({ connectionString, ssl: connectionString.includes('railway.internal') ? false : { rejectUnauthorized: false } })
+    : new Pool({
+        user: process.env.PGUSER || process.env.USER || 'postgres',
+        host: process.env.PGHOST || '127.0.0.1',
+        database: process.env.PGDATABASE || 'yachtflow',
+        password: process.env.PGPASSWORD || '',
+        port: parseInt(process.env.PGPORT || '5432', 10),
+      });
 
-  const pgUser = process.env.PGUSER || process.env.USER || 'postgres';
-  const pgHost = process.env.PGHOST || '127.0.0.1';
-  const pgPassword = process.env.PGPASSWORD || '';
-  const pgPort = parseInt(process.env.PGPORT || '5432', 10);
-  const targetDb = process.env.PGDATABASE || 'yachtflow';
-
-  console.log(`Connecting directly to database '${targetDb}' to run table schemas and seed defaults...`);
-  const pool = new Pool({
-    user: pgUser,
-    host: pgHost,
-    database: targetDb,
-    password: pgPassword,
-    port: pgPort,
-  });
+  console.log(`Connecting to database...`);
 
   try {
-    // Read schema.sql
-    const __dirname = path.resolve();
-    const schemaPath = path.join(__dirname, 'server', 'schema.sql');
-    console.log(`Reading SQL schema file from: ${schemaPath}`);
-    const schemaSql = fs.readFileSync(schemaPath, 'utf8');
-
-    // Run schemas
-    await pool.query(schemaSql);
-    console.log("Table schemas created successfully.");
-
+    // Schema is already handled by Prisma — just seed data
     // Clean existing tables to prevent key duplicate conflicts on seed runs
     console.log("Cleaning existing database records for fresh seed...");
     await pool.query(`TRUNCATE TABLE bookings CASCADE`);
