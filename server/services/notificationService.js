@@ -238,10 +238,7 @@ export async function sendWhatsAppAPI(booking, yacht) {
   const paidAmount = Number(booking.payment_amount);
   const remaining = Math.max(0, totalAmount - paidAmount);
 
-  const messageText = `*YACHT CHARTER CONFIRMATION*
-===================================
-
-Dear *${booking.guest_name}*,
+  const messageText = `Dear *${booking.guest_name}*,
 
 We are pleased to confirm your upcoming yacht charter with *YachtFlow*.
 

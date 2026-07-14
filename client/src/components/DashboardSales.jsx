@@ -376,10 +376,7 @@ export default function DashboardSales({
     const paidAmount = Number(paymentAmount) || 0;
     const remaining = Math.max(0, totalAmount - paidAmount);
 
-    const messageText = `*YACHT CHARTER CONFIRMATION*
-===================================
-
-Dear *${guestName}*,
+    const messageText = `Dear *${guestName}*,
 
 We are pleased to confirm your upcoming yacht charter with *YachtFlow*.
 
@@ -522,10 +519,7 @@ Best regards,
           const paidAmount = Number(paymentAmount) || 0;
           const remaining = Math.max(0, totalAmount - paidAmount);
 
-          const messageText = `*YACHT CHARTER CONFIRMATION*
-===================================
-
-Dear *${guestName}*,
+          const messageText = `Dear *${guestName}*,
 
 We are pleased to confirm your upcoming yacht charter with *YachtFlow*.
 
