@@ -1195,7 +1195,7 @@ Best regards,
               <div className="timeline-header-row">
                 <div className="timeline-yacht-col-header">Yacht Fleet</div>
                 <div className="timeline-slots-wrapper">
-                  {hoursRange.map(hour => (
+                  {hoursArray.map(hour => (
                     <div key={hour} className="timeline-hour-label">
                       {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
                     </div>
@@ -1214,7 +1214,7 @@ Best regards,
                     </div>
                     <div className="timeline-slots-wrapper timeline-grid-bg">
                       {/* Hour slot guidelines */}
-                      {hoursRange.map(hour => (
+                      {hoursArray.map(hour => (
                         <div 
                           key={hour} 
                           className={`timeline-slot-hour ${isReadOnly ? '' : 'clickable-slot'}`} 
