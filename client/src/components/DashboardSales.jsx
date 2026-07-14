@@ -369,14 +369,32 @@ export default function DashboardSales({
     const paidAmount = Number(paymentAmount) || 0;
     const remaining = Math.max(0, totalAmount - paidAmount);
 
-    const messageText = `Hello ${guestName}, your yacht charter booking has been CONFIRMED.
-Yacht: ${yacht ? yacht.name : 'SQX Yacht'}
-Start: ${start}
-Duration: ${formDuration} hour(s)
-Total: $${totalAmount.toFixed(2)}
-Paid: $${paidAmount.toFixed(2)}
-Remaining: $${remaining.toFixed(2)}
-Please arrive 15 minutes early. Thank you!`;
+    const messageText = `🌟 *YACHT CHARTER CONFIRMATION* 🌟
+
+Dear *${guestName}*,
+
+We are delighted to confirm your upcoming luxury yacht charter with *YachtFlow*! ⚓✨
+
+Here is your official voyage itinerary and booking summary:
+
+🗓️ *Voyage Details:*
+• *Yacht:* ${yacht ? yacht.name : 'SQX Yacht'}
+• *Departure:* ${start}
+• *Duration:* ${formDuration} hour(s)
+• *Status:* Confirmed ✅
+
+💰 *Financial Summary:*
+• *Total Booking Amount:* $${totalAmount.toFixed(2)}
+• *Amount Paid:* $${paidAmount.toFixed(2)}
+• *Outstanding Balance:* $${remaining.toFixed(2)}
+
+📋 *Boarding Instructions:*
+Please arrive at the marina *15 minutes prior* to your scheduled departure time. Ensure all boarding guests have valid identification documents.
+
+Thank you for choosing YachtFlow. We look forward to welcoming you on board for an unforgettable experience! 🌊🛥️
+
+Best regards,
+*YachtFlow Reservations Team*`;
 
     const encodedText = encodeURIComponent(messageText);
     const cleanPhone = phoneNumber.replace(/\D/g, '');
@@ -491,14 +509,32 @@ Please arrive 15 minutes early. Thank you!`;
           const paidAmount = Number(paymentAmount) || 0;
           const remaining = Math.max(0, totalAmount - paidAmount);
 
-          const messageText = `Hello ${guestName}, your yacht charter booking has been CONFIRMED.
-Yacht: ${yacht ? yacht.name : 'SQX Yacht'}
-Start: ${start}
-Duration: ${formDuration} hour(s)
-Total: $${totalAmount.toFixed(2)}
-Paid: $${paidAmount.toFixed(2)}
-Remaining: $${remaining.toFixed(2)}
-Please arrive 15 minutes early. Thank you!`;
+          const messageText = `🌟 *YACHT CHARTER CONFIRMATION* 🌟
+
+Dear *${guestName}*,
+
+We are delighted to confirm your upcoming luxury yacht charter with *YachtFlow*! ⚓✨
+
+Here is your official voyage itinerary and booking summary:
+
+🗓️ *Voyage Details:*
+• *Yacht:* ${yacht ? yacht.name : 'SQX Yacht'}
+• *Departure:* ${start}
+• *Duration:* ${formDuration} hour(s)
+• *Status:* Confirmed ✅
+
+💰 *Financial Summary:*
+• *Total Booking Amount:* $${totalAmount.toFixed(2)}
+• *Amount Paid:* $${paidAmount.toFixed(2)}
+• *Outstanding Balance:* $${remaining.toFixed(2)}
+
+📋 *Boarding Instructions:*
+Please arrive at the marina *15 minutes prior* to your scheduled departure time. Ensure all boarding guests have valid identification documents.
+
+Thank you for choosing YachtFlow. We look forward to welcoming you on board for an unforgettable experience! 🌊🛥️
+
+Best regards,
+*YachtFlow Reservations Team*`;
 
           setWhatsAppWebPrompt({
             guestName,
