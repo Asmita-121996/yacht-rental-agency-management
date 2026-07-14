@@ -53,6 +53,12 @@ export default function DashboardSales({
   const [toast, setToast] = useState(null); // { message: string, type: 'error' | 'success' }
   const [whatsAppWebPrompt, setWhatsAppWebPrompt] = useState(null); // { guestName, phoneNumber, text }
   const [activeBottomTab, setActiveBottomTab] = useState("today-registry"); // "today-registry" | "all-registry" | "conflict-checker" | "fleet-rates"
+  const [activeMainTab, setActiveMainTab] = useState("calendar-history"); // "calendar-history" | "ops-planning"
+  const [historySubTab, setHistorySubTab] = useState("selected-day"); // "selected-day" | "all-history"
+  const [salesRepFilter, setSalesRepFilter] = useState("all");
+  const [paymentFilter, setPaymentFilter] = useState("all"); // "all" | "fully-paid" | "partial"
+  const [filterStartDate, setFilterStartDate] = useState("");
+  const [filterEndDate, setFilterEndDate] = useState("");
   
   // Form fields
   const [guestName, setGuestName] = useState("");
@@ -599,6 +605,279 @@ Best regards,
     return (b.status === "Pending" || b.status === "Confirmed") && new Date(b.endDate) < new Date() && isSameDay;
   });
 
+  // Helper to render all form fields in both the modal and the inline operations tab
+  const renderBookingFormFields = () => {
+    return (
+      <>
+        {/* Row 1: Guest Name + Yacht + Rate */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr minmax(120px, 160px)', gap: '12px', marginBottom: '12px' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Guest Name *</label>
+            <input
+              type="text"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              placeholder="e.g. Martha Wayne"
+              required
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Yacht *</label>
+            <select value={yachtId} onChange={(e) => {
+              setYachtId(e.target.value);
+              setOfferedHourlyRate(null);
+            }} disabled={isReadOnly}>
+              {yachts.map(y => (
+                <option key={y.id} value={y.id}>{y.name} (Max {y.capacity})</option>
+              ))}
+            </select>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>
+              Rate/hr ($)
+              {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
+                <span style={{ color: 'var(--warning, #f59e0b)', fontSize: '0.7rem', marginLeft: '6px', fontWeight: 600 }}>✎ Custom</span>
+              )}
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={offeredHourlyRate !== null ? offeredHourlyRate : (selectedYacht?.hourlyRate || '')}
+              onChange={(e) => setOfferedHourlyRate(e.target.value === '' ? null : Number(e.target.value))}
+              disabled={isReadOnly}
+              placeholder={selectedYacht ? `Std: $${selectedYacht.hourlyRate}` : ''}
+              style={offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate
+                ? { borderColor: '#f59e0b', color: '#f59e0b' }
+                : {}}
+            />
+            {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                Std: ${selectedYacht.hourlyRate}/hr
+                <button type="button" onClick={() => setOfferedHourlyRate(null)} style={{ marginLeft: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem', textDecoration: 'underline' }}>Reset</button>
+              </small>
+            )}
+          </div>
+        </div>
+
+        {/* Row 1.5: Guest Email + Guest Phone */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Guest Email</label>
+            <input
+              type="email"
+              value={guestEmail}
+              onChange={(e) => setGuestEmail(e.target.value)}
+              placeholder="e.g. martha.wayne@example.com"
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
+            <input
+              type="text"
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              placeholder="e.g. +1234567890"
+              disabled={isReadOnly}
+            />
+          </div>
+        </div>
+
+        {/* Row 2: Start Date/Time + Duration + End Date/Time */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(90px, 130px) 1fr', gap: '12px', marginBottom: '12px' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Start Date & Time</label>
+            <input
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => handleStartDateChange(e.target.value)}
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Duration (hrs)</label>
+            <input
+              type="number"
+              min="0.5"
+              step="0.5"
+              value={formDuration}
+              onChange={(e) => handleDurationChange(e.target.value)}
+              disabled={isReadOnly}
+              placeholder="e.g. 3"
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>End Date & Time</label>
+            <input
+              type="datetime-local"
+              value={endDate}
+              onChange={(e) => handleEndDateChange(e.target.value)}
+              disabled={isReadOnly}
+            />
+          </div>
+        </div>
+
+        {liveConflict && (
+          <div style={{
+            backgroundColor: 'rgba(239, 68, 68, 0.12)',
+            color: '#ef4444',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            fontSize: '0.78rem',
+            marginBottom: '12px',
+            lineHeight: '1.4',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '1rem' }}>⚠️</span>
+            <span>{liveConflict.message}</span>
+          </div>
+        )}
+
+        {/* Row 3: Adults + Children + Booking Status */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 100px) minmax(80px, 100px) 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Adults</label>
+            <input
+              type="number"
+              min="1"
+              value={adults}
+              onChange={(e) => setAdults(e.target.value === '' ? '' : Number(e.target.value))}
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Children</label>
+            <input
+              type="number"
+              min="0"
+              value={children}
+              onChange={(e) => setChildren(e.target.value === '' ? '' : Number(e.target.value))}
+              disabled={isReadOnly}
+            />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label>Booking Status</label>
+            <select value={bookingStatus} onChange={(e) => setBookingStatus(e.target.value)} disabled={isReadOnly}>
+              <option value="Pending">Pending</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Additional Services — 3 columns */}
+        <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '14px 16px', borderRadius: '8px', marginBottom: '16px' }}>
+          <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
+            Additional Services & Charges
+          </h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Decoration ($)</label>
+              <input type="number" min="0" value={decorationCharges} onChange={(e) => setDecorationCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Water Slide ($)</label>
+              <input type="number" min="0" value={waterSlideCharges} onChange={(e) => setWaterSlideCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Jet Ski ($)</label>
+              <input type="number" min="0" value={jetSkiCharges} onChange={(e) => setJetSkiCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Catering ($)</label>
+              <input type="number" min="0" value={cateringCharges} onChange={(e) => setCateringCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Other Service ($)</label>
+              <input type="number" min="0" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
+            </div>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>VAT Rate</label>
+              <select value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))} disabled={isReadOnly}>
+                <option value="0">No VAT (0%)</option>
+                <option value="5">VAT 5%</option>
+                <option value="7">VAT 7%</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* Dynamic Booking Statement + Payment side by side */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+          {/* Quote summary */}
+          <div>
+            <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem' }}>Booking Statement</h4>
+            <div className="flex flex-col gap-8" style={{ fontSize: '0.85rem' }}>
+              <div className="flex justify-between">
+                <span>
+                  Yacht Charter ({selectedYacht?.name}
+                  {offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate ? (
+                    <>
+                      {' '}@ <span style={{ color: '#f59e0b', fontWeight: 600 }}>${effectiveRate}/hr</span>
+                      <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '4px', fontSize: '0.8rem' }}>${selectedYacht.hourlyRate}</span>
+                    </>
+                  ) : (
+                    ` @ $${effectiveRate}/hr`
+                  )}
+                  {` × ${tempDuration.toFixed(1)}h`}):
+                </span>
+                <span>${yachtCost}</span>
+              </div>
+              {decCost > 0 && <div className="flex justify-between"><span>Decoration:</span><span>${decCost}</span></div>}
+              {slideCost > 0 && <div className="flex justify-between"><span>Water Slide:</span><span>${slideCost}</span></div>}
+              {skiCost > 0 && <div className="flex justify-between"><span>Jet Ski:</span><span>${skiCost}</span></div>}
+              {catCost > 0 && <div className="flex justify-between"><span>Catering:</span><span>${catCost}</span></div>}
+              {othCost > 0 && <div className="flex justify-between"><span>Other:</span><span>${othCost}</span></div>}
+              <div className="flex justify-between" style={{ fontWeight: 500, borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
+                <span>Subtotal:</span><span>${tempSubtotal}</span>
+              </div>
+              <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
+                <span>VAT ({vatRate}%):</span><span>${tempVatAmount}</span>
+              </div>
+              <div className="flex justify-between" style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                <span>Grand Total:</span><span>${tempTotalAmount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment */}
+          <div>
+            <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem' }}>Payment</h4>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label>Payment Method</label>
+              <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} disabled={isReadOnly}>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Online">Online</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Amount Collected ($)</label>
+              <input
+                type="number"
+                min="0"
+                max={tempTotalAmount}
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
+                disabled={isReadOnly}
+              />
+              <small style={{ color: 'var(--text-muted)' }}>
+                Remaining: ${tempTotalAmount - (Number(paymentAmount) || 0)}
+              </small>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  };
+
   // Today's Bookings for the registry table (based on selectedDate)
   const todayBookings = bookings.filter(b => {
     if (!b.startDate || !b.endDate) return false;
@@ -609,7 +888,7 @@ Best regards,
     return bStart <= selDateEnd && bEnd >= selDateStart;
   }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
-  // Filtered Bookings for the list
+  // Filtered Bookings for the list (Voyage History)
   const filteredBookings = bookings.filter(booking => {
     const yachtObj = yachts.find(y => y.id === booking.yachtId);
     const matchesSearch = booking.guestName.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -617,8 +896,22 @@ Best regards,
                           (yachtObj && yachtObj.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesYacht = yachtFilter === "all" || booking.yachtId === yachtFilter;
     const matchesStatus = statusFilter === "all" || booking.status === statusFilter;
-    return matchesSearch && matchesYacht && matchesStatus;
+    const matchesSalesRep = salesRepFilter === "all" || booking.salesPerson === salesRepFilter;
+    
+    let matchesPayment = true;
+    if (paymentFilter === "fully-paid") {
+      matchesPayment = booking.paymentAmount >= booking.totalAmount;
+    } else if (paymentFilter === "partial") {
+      matchesPayment = booking.paymentAmount < booking.totalAmount;
+    }
+
+    const matchesStartDate = !filterStartDate || new Date(booking.startDate) >= new Date(filterStartDate + 'T00:00:00');
+    const matchesEndDate = !filterEndDate || new Date(booking.endDate) <= new Date(filterEndDate + 'T23:59:59');
+
+    return matchesSearch && matchesYacht && matchesStatus && matchesSalesRep && matchesPayment && matchesStartDate && matchesEndDate;
   });
+
+  const uniqueSalesReps = Array.from(new Set(bookings.map(b => b.salesPerson).filter(Boolean)));
 
   // Calculate timelines display helper
   const getTimelineBookingsForYacht = (yachtId) => {
@@ -785,380 +1078,566 @@ Best regards,
           </div>
         </div>
       )}
-
-
-
-      {/* Scheduler Timeline Map */}
-      <div className="card">
-        <div className="flex justify-between align-center mb-24" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
-          <div className="flex align-center gap-16">
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>Yacht Availability:</span>
-            <div className="date-navigator" style={{ margin: 0 }}>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                style={{ fontWeight: 600, padding: '4px 10px', fontSize: '0.9rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
-              />
-            </div>
-          </div>
-          {!isReadOnly && (
-            <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.85rem' }} onClick={handleOpenNewBooking}>
-              + Create New Booking
-            </button>
-          )}
-        </div>
-        <div className="timeline-grid">
-          {/* Header Hours Row */}
-          <div className="timeline-hours">
-            <div className="timeline-yacht-label" style={{ backgroundColor: 'var(--bg-tertiary)' }}>Yacht Name</div>
-            <div className="timeline-slots">
-              {hoursArray.map((hour, idx) => (
-                <div key={idx} className="timeline-slot-hour">
-                  {hour.toString().padStart(2, '0')}:00
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Yacht Rows */}
-          {yachts.map(yacht => {
-            const yachtBookings = getTimelineBookingsForYacht(yacht.id);
-            return (
-              <div key={yacht.id} className="timeline-row">
-                <div className="timeline-yacht-label">
-                  <div>
-                    <div>{yacht.name}</div>
-                    <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Cap: {yacht.capacity}</small>
-                  </div>
-                </div>
-                <div className="timeline-slots">
-                  {/* Visual Background grid lines */}
-                  {hoursArray.map((hour, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`timeline-slot-hour ${isReadOnly ? '' : 'clickable-slot'}`} 
-                      onClick={() => handleGridSlotClick(yacht.id, hour)}
-                      title={isReadOnly ? undefined : `Book ${yacht.name} starting at ${hour.toString().padStart(2, '0')}:00`}
-                      style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
-                    />
-                  ))}
-                  
-                  {/* Booked Blocks */}
-                  {yachtBookings.map(b => {
-                    const blockStyle = getBookingBlockStyle(b);
-                    let statusClass = "bg-booking-confirmed";
-                    if (b.status === "Pending") statusClass = "bg-booking-pending";
-                    if (b.status === "Completed") statusClass = "bg-booking-completed";
-                    
-                    const formattedTimeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
-                                             " - " + 
-                                             new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    return (
-                      <div
-                        key={b.id}
-                        className={`timeline-booking-block ${statusClass}`}
-                        style={blockStyle}
-                        onClick={(e) => { e.stopPropagation(); handleOpenEditBooking(b); }}
-                        onMouseEnter={(e) => {
-                          setHoveredBooking(b);
-                          setTooltipPos({ x: e.clientX, y: e.clientY - 120 });
-                        }}
-                        onMouseMove={(e) => {
-                          setTooltipPos({ x: e.clientX, y: e.clientY - 120 });
-                        }}
-                        onMouseLeave={() => setHoveredBooking(null)}
-                      >
-                        <div className="timeline-booking-label">
-                          <strong style={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{b.guestName}</strong>
-                          <span style={{ display: 'block', fontSize: '0.65rem', opacity: 0.9, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
-                            👤 {b.salesPerson}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-        <div className="flex gap-16 mt-24" style={{ justifyContent: 'center' }}>
-          <div className="legend-item"><div className="legend-color bg-booking-pending" /> Pending</div>
-          <div className="legend-item"><div className="legend-color bg-booking-confirmed" /> Confirmed</div>
-          <div className="legend-item"><div className="legend-color bg-booking-completed" /> Completed</div>
-        </div>
-      </div>
-
-      {/* TABBED OPERATIONS DESK (Registry, Conflict Checker, Pricing Guide, All Bookings) */}
       <style>{`
-        .ops-tab-btn {
-          padding: 12px 24px;
+        .main-tab-nav {
+          display: flex;
+          border-bottom: 2px solid var(--border-color);
+          gap: 4px;
+          margin-bottom: 24px;
+          overflow-x: auto;
+          padding-bottom: 2px;
+        }
+        .main-tab-btn {
+          padding: 14px 28px;
           border: none;
           background: none;
           color: var(--text-muted);
           border-bottom: 3px solid transparent;
           font-weight: 700;
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.98rem;
           white-space: nowrap;
-          transition: all 0.2s;
+          transition: all 0.2s ease;
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 10px;
+          border-radius: 8px 8px 0 0;
         }
-        .ops-tab-btn:hover {
+        .main-tab-btn:hover {
           color: var(--text-main);
           background-color: var(--bg-tertiary);
         }
-        .ops-tab-btn.active {
+        .main-tab-btn.active {
+          color: var(--brand) !important;
+          border-bottom-color: var(--brand) !important;
+          background-color: rgba(99, 102, 241, 0.05);
+        }
+        
+        .ops-sub-tab-btn {
+          padding: 10px 20px;
+          border: none;
+          background: none;
+          color: var(--text-muted);
+          border-bottom: 2px solid transparent;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 0.88rem;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        .ops-sub-tab-btn:hover {
+          color: var(--text-main);
+        }
+        .ops-sub-tab-btn.active {
           color: var(--brand) !important;
           border-bottom-color: var(--brand) !important;
         }
+
+        @media (min-width: 1025px) {
+          .dashboard-ops-grid {
+            display: grid !important;
+            grid-template-columns: 1.2fr 1fr !important;
+            gap: 24px !important;
+          }
+        }
+        @media (max-width: 1024px) {
+          .dashboard-ops-grid {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 24px !important;
+          }
+        }
       `}</style>
 
-      <div className="card" style={{ marginTop: '24px', padding: '24px' }}>
-        {/* Tab Headers */}
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid var(--border-color)', 
-          gap: '8px', 
-          overflowX: 'auto', 
-          marginBottom: '24px',
-          paddingBottom: '2px'
-        }}>
-          <button
-            onClick={() => setActiveBottomTab("today-registry")}
-            className={`ops-tab-btn ${activeBottomTab === 'today-registry' ? 'active' : ''}`}
-          >
-            📅 Voyage Registry ({todayBookings.length})
-          </button>
+      <div className="main-tab-nav">
+        <button
+          onClick={() => setActiveMainTab("calendar-history")}
+          className={`main-tab-btn ${activeMainTab === 'calendar-history' ? 'active' : ''}`}
+        >
+          📅 Booking Calendar & History
+        </button>
+        
+        <button
+          onClick={() => setActiveMainTab("ops-planning")}
+          className={`main-tab-btn ${activeMainTab === 'ops-planning' ? 'active' : ''}`}
+        >
+          🛠️ Booking Form, Conflicts & Pricing
+        </button>
+      </div>
+
+      {/* TAB 1: Booking Calendar & History */}
+      {activeMainTab === "calendar-history" && (
+        <div className="flex flex-col gap-24">
           
-          <button
-            onClick={() => setActiveBottomTab("all-registry")}
-            className={`ops-tab-btn ${activeBottomTab === 'all-registry' ? 'active' : ''}`}
-          >
-            📋 Search All Bookings ({filteredBookings.length})
-          </button>
-
-          <button
-            onClick={() => setActiveBottomTab("conflict-checker")}
-            className={`ops-tab-btn ${activeBottomTab === 'conflict-checker' ? 'active' : ''}`}
-          >
-            ⚡ Conflict Auditor
-          </button>
-
-          <button
-            onClick={() => setActiveBottomTab("fleet-rates")}
-            className={`ops-tab-btn ${activeBottomTab === 'fleet-rates' ? 'active' : ''}`}
-          >
-            🛥️ Fleet Pricing Guide
-          </button>
-        </div>
-
-        {/* Tab Contents */}
-        <div style={{ minHeight: '300px' }}>
-          
-          {/* Tab 1: Today's Voyage Registry */}
-          {activeBottomTab === 'today-registry' && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
-                  Voyages Scheduled for {new Date(selectedDate).toLocaleDateString([], { dateStyle: 'long' })}
-                </h3>
-              </div>
-              
-              <div style={{ overflowX: 'auto' }}>
-                {todayBookings.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '64px 16px', color: 'var(--text-muted)' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⚓</div>
-                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>No charters scheduled for this date.</p>
-                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Select another date on the timeline date navigator to check.</small>
-                  </div>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Period</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Yacht</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Guest Name</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Guests</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Total Bill</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Status</th>
-                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {todayBookings.map(b => {
-                        const yacht = yachts.find(y => y.id === b.yachtId);
-                        const timeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
-                                        ' - ' + 
-                                        new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        
-                        let statusBadge = 'badge-info';
-                        if (b.status === 'Pending') statusBadge = 'badge-warning';
-                        if (b.status === 'Completed') statusBadge = 'badge-success';
-
-                        return (
-                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{timeStr}</td>
-                            <td style={{ padding: '12px 8px' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--brand)' }}>{yacht ? yacht.name : 'Unknown'}</div>
-                              <small style={{ color: 'var(--text-muted)' }}>{b.durationHours} hrs</small>
-                            </td>
-                            <td style={{ padding: '12px 8px' }}>
-                              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{b.guestName}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sales Rep: {b.salesPerson}</div>
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 500, color: 'var(--text-main)' }}>
-                              {b.adults + b.children} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({b.adults}A/{b.children}C)</span>
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
-                              ${Number(b.totalAmount).toFixed(2)}
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                              <span className={`badge ${statusBadge}`} style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
-                                {b.status}
-                              </span>
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                              <button 
-                                className="btn btn-secondary" 
-                                style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px' }} 
-                                onClick={() => handleOpenEditBooking(b)}
-                              >
-                                Details
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Tab 2: Search All Bookings */}
-          {activeBottomTab === 'all-registry' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>All Bookings Archive</h3>
-                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          {/* Scheduler Timeline Map */}
+          <div className="card">
+            <div className="flex justify-between align-center mb-24" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+              <div className="flex align-center gap-16">
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-main)' }}>Yacht Availability:</span>
+                <div className="date-navigator" style={{ margin: 0 }}>
                   <input
-                    type="text"
-                    placeholder="Search guest or sales exec..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: '220px', padding: '6px 12px', fontSize: '0.85rem' }}
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    style={{ fontWeight: 600, padding: '4px 10px', fontSize: '0.9rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
                   />
-                  <select value={yachtFilter} onChange={(e) => setYachtFilter(e.target.value)} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                    <option value="all">All Yachts</option>
-                    {yachts.map(y => (
-                      <option key={y.id} value={y.id}>{y.name}</option>
-                    ))}
-                  </select>
-                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
-                    <option value="all">All Statuses</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Confirmed">Confirmed</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
+                </div>
+              </div>
+              {!isReadOnly && (
+                <button className="btn btn-primary" style={{ padding: '6px 14px', fontSize: '0.85rem' }} onClick={handleOpenNewBooking}>
+                  + Create New Booking
+                </button>
+              )}
+            </div>
+
+            <div className="timeline-container">
+              {/* Timeline Header (Hours) */}
+              <div className="timeline-header-row">
+                <div className="timeline-yacht-col-header">Yacht Fleet</div>
+                <div className="timeline-slots-wrapper">
+                  {hoursRange.map(hour => (
+                    <div key={hour} className="timeline-hour-label">
+                      {hour === 12 ? '12 PM' : hour > 12 ? `${hour - 12} PM` : `${hour} AM`}
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              <div className="table-wrapper" style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                      <th style={{ padding: '12px 8px' }}>Guest</th>
-                      <th style={{ padding: '12px 8px' }}>Yacht</th>
-                      <th style={{ padding: '12px 8px' }}>Time Window</th>
-                      <th style={{ padding: '12px 8px' }}>Pax (Est vs Act)</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'right' }}>Total Bill</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'right' }}>Paid</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>Status</th>
-                      <th style={{ padding: '12px 8px' }}>Sales Rep</th>
-                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredBookings.length === 0 ? (
-                      <tr>
-                        <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                          No bookings found matching search criteria.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredBookings.map(b => {
-                        const y = yachts.find(yacht => yacht.id === b.yachtId);
-                        const isFullyPaid = b.paymentAmount >= b.totalAmount;
-                        const formattedStart = new Date(b.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " +
-                                               new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        const formattedEnd = new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              {/* Yacht Rows */}
+              {yachts.map(yacht => {
+                const yachtBookings = getTimelineBookingsForYacht(yacht.id);
+                return (
+                  <div key={yacht.id} className="timeline-yacht-row">
+                    <div className="timeline-yacht-info-col">
+                      <strong style={{ display: 'block', color: 'var(--text-main)' }}>{yacht.name}</strong>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Max Cap: {yacht.capacity} pax</span>
+                    </div>
+                    <div className="timeline-slots-wrapper timeline-grid-bg">
+                      {/* Hour slot guidelines */}
+                      {hoursRange.map(hour => (
+                        <div 
+                          key={hour} 
+                          className={`timeline-slot-hour ${isReadOnly ? '' : 'clickable-slot'}`} 
+                          onClick={() => handleGridSlotClick(yacht.id, hour)}
+                          title={isReadOnly ? undefined : `Book ${yacht.name} starting at ${hour.toString().padStart(2, '0')}:00`}
+                          style={{ cursor: isReadOnly ? 'default' : 'pointer' }}
+                        />
+                      ))}
+                      
+                      {/* Booked Blocks */}
+                      {yachtBookings.map(b => {
+                        const blockStyle = getBookingBlockStyle(b);
+                        let statusClass = "bg-booking-confirmed";
+                        if (b.status === "Pending") statusClass = "bg-booking-pending";
+                        if (b.status === "Completed") statusClass = "bg-booking-completed";
                         
-                        let badgeClass = "badge-info";
-                        if (b.status === "Pending") badgeClass = "badge-warning";
-                        if (b.status === "Completed") badgeClass = "badge-success";
-                        if (b.status === "Cancelled") badgeClass = "badge-danger";
-
-                        const isBoarded = b.boardingStatus === "Boarded" || b.boardingStatus === "Completed";
-
+                        const formattedTimeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+                                                 " - " + 
+                                                 new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                         return (
-                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '12px 8px', color: 'var(--text-main)' }}><strong>{b.guestName}</strong></td>
-                            <td style={{ padding: '12px 8px' }}>{y ? y.name : 'Unknown Yacht'}</td>
-                            <td style={{ padding: '12px 8px' }}>
-                              <div>{formattedStart}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to {formattedEnd} ({b.durationHours} hrs)</div>
-                            </td>
-                            <td style={{ padding: '12px 8px' }}>
-                              <div style={{ color: 'var(--text-main)' }}>{b.adults}A + {b.children}C</div>
-                              {isBoarded && (
-                                <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 500 }}>
-                                  Act: {b.actualAdults}A + {b.actualChildren}C
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right', color: 'var(--text-main)' }}><strong>${b.totalAmount}</strong></td>
-                            <td style={{ padding: '12px 8px', textAlign: 'right' }} className={isFullyPaid ? "text-success" : "text-danger"}>
-                              ${b.paymentAmount}
-                              {b.paymentCollectedBy && (
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                                  by {b.paymentCollectedBy}
-                                </div>
-                              )}
-                            </td>
-                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                              <span className={`badge ${badgeClass}`}>{b.status}</span>
-                            </td>
-                            <td style={{ padding: '12px 8px' }}>{b.salesPerson}</td>
-                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                              <div className="flex gap-8" style={{ justifyContent: 'center' }}>
-                                <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenEditBooking(b)}>
-                                  {isReadOnly ? "Details" : "Edit"}
-                                </button>
-                                <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenInvoice(b)}>
-                                  Receipt
-                                </button>
-                              </div>
+                          <div
+                            key={b.id}
+                            className={`timeline-booking-block ${statusClass}`}
+                            style={blockStyle}
+                            onClick={(e) => { e.stopPropagation(); handleOpenEditBooking(b); }}
+                            onMouseEnter={(e) => {
+                              setHoveredBooking(b);
+                              setTooltipPos({ x: e.clientX, y: e.clientY - 120 });
+                            }}
+                            onMouseMove={(e) => {
+                              setTooltipPos({ x: e.clientX, y: e.clientY - 120 });
+                            }}
+                            onMouseLeave={() => setHoveredBooking(null)}
+                          >
+                            <div className="timeline-booking-label">
+                              <strong style={{ display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{b.guestName}</strong>
+                              <span style={{ display: 'block', fontSize: '0.65rem', opacity: 0.9, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', marginTop: '2px' }}>
+                                👤 {b.salesPerson}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-16 mt-24" style={{ justifyContent: 'center' }}>
+              <div className="legend-item"><div className="legend-color bg-booking-pending" /> Pending</div>
+              <div className="legend-item"><div className="legend-color bg-booking-confirmed" /> Confirmed</div>
+              <div className="legend-item"><div className="legend-color bg-booking-completed" /> Completed</div>
+            </div>
+          </div>
+
+          {/* Voyage Registry & History Sub-Tabs Card */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', gap: '16px', marginBottom: '20px' }}>
+              <button
+                onClick={() => setHistorySubTab("selected-day")}
+                className={`ops-sub-tab-btn ${historySubTab === 'selected-day' ? 'active' : ''}`}
+              >
+                📅 Voyage Registry for Selected Date ({todayBookings.length})
+              </button>
+              <button
+                onClick={() => setHistorySubTab("all-history")}
+                className={`ops-sub-tab-btn ${historySubTab === 'all-history' ? 'active' : ''}`}
+              >
+                📋 All Voyages & Search History Archive ({filteredBookings.length})
+              </button>
+            </div>
+
+            <div>
+              {/* Selected Day's Bookings Registry */}
+              {historySubTab === "selected-day" && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                      Voyages Scheduled for {new Date(selectedDate).toLocaleDateString([], { dateStyle: 'long' })}
+                    </h3>
+                  </div>
+
+                  <div style={{ overflowX: 'auto' }}>
+                    {todayBookings.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '56px 16px', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '2.8rem', marginBottom: '12px' }}>⚓</div>
+                        <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 500 }}>No charters scheduled for this date.</p>
+                        <small style={{ color: 'var(--text-muted)' }}>Use the calendar date box above to check other dates.</small>
+                      </div>
+                    ) : (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                        <thead>
+                          <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Period</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Yacht</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Guest Name</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Guests</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Total Bill</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                            <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {todayBookings.map(b => {
+                            const yacht = yachts.find(y => y.id === b.yachtId);
+                            const timeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+                                            ' - ' + 
+                                            new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            
+                            let statusBadge = 'badge-info';
+                            if (b.status === 'Pending') statusBadge = 'badge-warning';
+                            if (b.status === 'Completed') statusBadge = 'badge-success';
+
+                            return (
+                              <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{timeStr}</td>
+                                <td style={{ padding: '12px 8px' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--brand)' }}>{yacht ? yacht.name : 'Unknown'}</div>
+                                  <small style={{ color: 'var(--text-muted)' }}>{b.durationHours} hrs</small>
+                                </td>
+                                <td style={{ padding: '12px 8px' }}>
+                                  <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{b.guestName}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sales Rep: {b.salesPerson}</div>
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 500, color: 'var(--text-main)' }}>
+                                  {b.adults + b.children} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({b.adults}A/{b.children}C)</span>
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
+                                  ${Number(b.totalAmount).toFixed(2)}
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                  <span className={`badge ${statusBadge}`} style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
+                                    {b.status}
+                                  </span>
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                  <button 
+                                    className="btn btn-secondary" 
+                                    style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px' }} 
+                                    onClick={() => handleOpenEditBooking(b)}
+                                  >
+                                    Details
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Voyage History Archive (All Bookings) with Advanced Filters */}
+              {historySubTab === "all-history" && (
+                <div>
+                  {/* ADVANCED SEARCH FILTERS PANEL */}
+                  <div style={{ 
+                    backgroundColor: 'var(--bg-tertiary)', 
+                    padding: '16px 20px', 
+                    borderRadius: '8px', 
+                    border: '1px solid var(--border-color)', 
+                    marginBottom: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>🔍 Advanced Operations Filter</strong>
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          setSearchQuery("");
+                          setYachtFilter("all");
+                          setStatusFilter("all");
+                          setSalesRepFilter("all");
+                          setPaymentFilter("all");
+                          setFilterStartDate("");
+                          setFilterEndDate("");
+                        }}
+                        style={{ background: 'none', border: 'none', color: 'var(--brand)', textDecoration: 'underline', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 600 }}
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', 
+                      gap: '12px' 
+                    }}>
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Search Query</label>
+                        <input
+                          type="text"
+                          placeholder="Search guest or reps..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          style={{ padding: '6px 10px', fontSize: '0.85rem' }}
+                        />
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Yacht Fleet</label>
+                        <select value={yachtFilter} onChange={(e) => setYachtFilter(e.target.value)} style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
+                          <option value="all">All Yachts</option>
+                          {yachts.map(y => (
+                            <option key={y.id} value={y.id}>{y.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Booking Status</label>
+                        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
+                          <option value="all">All Statuses</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Confirmed">Confirmed</option>
+                          <option value="Completed">Completed</option>
+                          <option value="Cancelled">Cancelled</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Sales Executive</label>
+                        <select value={salesRepFilter} onChange={(e) => setSalesRepFilter(e.target.value)} style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
+                          <option value="all">All Sales Persons</option>
+                          {uniqueSalesReps.map(rep => (
+                            <option key={rep} value={rep}>{rep}</option>
+                          ))}
+                          <option value="Office">Office</option>
+                        </select>
+                      </div>
+
+                      <div className="form-group" style={{ margin: 0 }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Payment Status</label>
+                        <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} style={{ padding: '6px 10px', fontSize: '0.85rem' }}>
+                          <option value="all">All Payments</option>
+                          <option value="fully-paid">Fully Paid</option>
+                          <option value="partial">Unpaid / Partial</option>
+                        </select>
+                      </div>
+
+                      {/* Date Range Picker */}
+                      <div className="form-group" style={{ margin: 0, gridColumn: 'span 2' }}>
+                        <label style={{ fontSize: '0.75rem', marginBottom: '4px' }}>Voyage Date Range (From / To)</label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                          <input
+                            type="date"
+                            value={filterStartDate}
+                            onChange={(e) => setFilterStartDate(e.target.value)}
+                            style={{ padding: '6px 10px', fontSize: '0.85rem', flex: 1 }}
+                          />
+                          <span style={{ color: 'var(--text-muted)' }}>to</span>
+                          <input
+                            type="date"
+                            value={filterEndDate}
+                            onChange={(e) => setFilterEndDate(e.target.value)}
+                            style={{ padding: '6px 10px', fontSize: '0.85rem', flex: 1 }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* RESULTS TABLE */}
+                  <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                          <th style={{ padding: '12px 8px' }}>Guest</th>
+                          <th style={{ padding: '12px 8px' }}>Yacht</th>
+                          <th style={{ padding: '12px 8px' }}>Time Window</th>
+                          <th style={{ padding: '12px 8px' }}>Pax (Est vs Act)</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'right' }}>Total Bill</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'right' }}>Paid</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>Status</th>
+                          <th style={{ padding: '12px 8px' }}>Sales Rep</th>
+                          <th style={{ padding: '12px 8px', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                              No bookings found matching search criteria.
                             </td>
                           </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                        ) : (
+                          filteredBookings.map(b => {
+                            const y = yachts.find(yacht => yacht.id === b.yachtId);
+                            const isFullyPaid = b.paymentAmount >= b.totalAmount;
+                            const formattedStart = new Date(b.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " +
+                                                   new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            const formattedEnd = new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                            
+                            let badgeClass = "badge-info";
+                            if (b.status === "Pending") badgeClass = "badge-warning";
+                            if (b.status === "Completed") badgeClass = "badge-success";
+                            if (b.status === "Cancelled") badgeClass = "badge-danger";
 
-          {/* Tab 3: Quick Conflict Checker */}
-          {activeBottomTab === 'conflict-checker' && (
-            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>⚡ Run Quick Conflict Audit</h3>
+                            const isBoarded = b.boardingStatus === "Boarded" || b.boardingStatus === "Completed";
+
+                            return (
+                              <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                <td style={{ padding: '12px 8px', color: 'var(--text-main)' }}><strong>{b.guestName}</strong></td>
+                                <td style={{ padding: '12px 8px' }}>{y ? y.name : 'Unknown Yacht'}</td>
+                                <td style={{ padding: '12px 8px' }}>
+                                  <div>{formattedStart}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to {formattedEnd} ({b.durationHours} hrs)</div>
+                                </td>
+                                <td style={{ padding: '12px 8px' }}>
+                                  <div style={{ color: 'var(--text-main)' }}>{b.adults}A + {b.children}C</div>
+                                  {isBoarded && (
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 500 }}>
+                                      Act: {b.actualAdults}A + {b.actualChildren}C
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'right', color: 'var(--text-main)' }}><strong>${b.totalAmount}</strong></td>
+                                <td style={{ padding: '12px 8px', textAlign: 'right' }} className={isFullyPaid ? "text-success" : "text-danger"}>
+                                  ${b.paymentAmount}
+                                  {b.paymentCollectedBy && (
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                      by {b.paymentCollectedBy}
+                                    </div>
+                                  )}
+                                </td>
+                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                  <span className={`badge ${badgeClass}`}>{b.status}</span>
+                                </td>
+                                <td style={{ padding: '12px 8px' }}>{b.salesPerson}</td>
+                                <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                                  <div className="flex gap-8" style={{ justifyContent: 'center' }}>
+                                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenEditBooking(b)}>
+                                      {isReadOnly ? "Details" : "Edit"}
+                                    </button>
+                                    <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenInvoice(b)}>
+                                      Receipt
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB 2: Booking Form, Conflicts & Pricing Desk */}
+      {activeMainTab === "ops-planning" && (
+        <div className="dashboard-ops-grid">
+          
+          {/* Left Column: Register New Voyage Form */}
+          <div className="card" style={{ padding: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '20px' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                ✍️ Register New Voyage Charter
+              </h3>
+              <span className="badge badge-info" style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
+                Sales Desk
+              </span>
+            </div>
+
+            <form onSubmit={handleFormSubmit}>
+              {formError && (
+                <div className="badge badge-danger mb-24" style={{ display: 'block', padding: '8px 12px', borderRadius: '4px', textAlign: 'center' }}>
+                  {formError}
+                </div>
+              )}
+              
+              {renderBookingFormFields()}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px', gap: '12px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-secondary" 
+                  onClick={() => {
+                    setGuestName("");
+                    setGuestEmail("");
+                    setPhoneNumber("");
+                    setYachtId(yachts[0]?.id || "");
+                    setStartDate(`${todayStr}T10:00`);
+                    setEndDate(`${todayStr}T14:00`);
+                    setAdults(2);
+                    setChildren(0);
+                    setOfferedHourlyRate(null);
+                    setDecorationCharges(0);
+                    setWaterSlideCharges(0);
+                    setJetSkiCharges(0);
+                    setCateringCharges(0);
+                    setOtherCharges(0);
+                    setPaymentAmount(0);
+                    setBookingStatus("Pending");
+                    setFormError("");
+                  }}
+                >
+                  Clear Fields
+                </button>
+                {!isReadOnly && (
+                  <button type="submit" className="btn btn-primary">
+                    Confirm Booking
+                  </button>
+                )}
+              </div>
+            </form>
+          </div>
+
+          {/* Right Column: Conflicts Auditor & Fleet Pricing Reference */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Conflict Auditor Card */}
+            <div className="card" style={{ padding: '24px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-main)' }}>⚡ Conflict Auditor</h3>
               <form onSubmit={handleCheckAvailability} className="flex flex-col gap-16" style={{ backgroundColor: 'var(--bg-tertiary)', padding: '20px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                 <div className="form-group">
                   <label>Select Yacht</label>
@@ -1168,7 +1647,7 @@ Best regards,
                     ))}
                   </select>
                 </div>
-                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div className="form-group">
                     <label>Start Date/Time</label>
                     <input
@@ -1186,7 +1665,7 @@ Best regards,
                     />
                   </div>
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>Check Yacht Availability</button>
+                <button type="submit" className="btn btn-secondary" style={{ marginTop: '8px' }}>Run Audit</button>
                 
                 {checkResult && (
                   <div className={`badge ${checkResult.success ? 'badge-success' : 'badge-danger'}`} style={{ padding: '12px', borderRadius: '6px', display: 'block', textAlign: 'center', fontWeight: 600, fontSize: '0.85rem', marginTop: '8px' }}>
@@ -1195,47 +1674,46 @@ Best regards,
                 )}
               </form>
             </div>
-          )}
 
-          {/* Tab 4: Yacht Fleet Pricing Guide */}
-          {activeBottomTab === 'fleet-rates' && (
-            <div>
-              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Yacht Fleet & Pricing Reference Guide</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+            {/* Pricing Guide Card */}
+            <div className="card" style={{ padding: '24px' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.02rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Fleet Rates & Capacities</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxHeight: '350px', overflowY: 'auto' }}>
                 {yachts.map(y => (
                   <div key={y.id} style={{ 
-                    padding: '16px', 
-                    borderRadius: '10px', 
+                    padding: '12px 16px', 
+                    borderRadius: '8px', 
                     backgroundColor: 'var(--bg-tertiary)', 
                     border: '1px solid var(--border-color)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
-                    minHeight: '120px'
+                    minHeight: '100px'
                   }}>
                     <div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                        <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{y.name}</strong>
-                        <span className="badge badge-info" style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
-                          Cap: {y.capacity} Pax
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>{y.name}</strong>
+                        <span className="badge badge-info" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                          Cap: {y.capacity} Guests
                         </span>
                       </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
-                        {y.description || "Luxurious charter yacht equipped with modern amenities and standard service crew."}
+                      <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 10px 0', lineHeight: '1.3' }}>
+                        {y.description || "Luxurious charter yacht equipped with standard service crew."}
                       </p>
                     </div>
-                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Standard Hourly Rate</span>
-                      <strong style={{ color: 'var(--brand)', fontSize: '1.1rem' }}>${Number(y.hourlyRate).toFixed(0)}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/hr</span></strong>
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Standard Hourly Rate</span>
+                      <strong style={{ color: 'var(--brand)', fontSize: '1.02rem' }}>${Number(y.hourlyRate).toFixed(0)}/hr</strong>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+
+          </div>
 
         </div>
-      </div>
+      )}
 
       {/* BOOKING CREATE/EDIT MODAL FORM */}
       {showFormModal && (
@@ -1252,273 +1730,7 @@ Best regards,
                     {formError}
                   </div>
                 )}
-
-                {/* Row 1: Guest Name + Yacht + Rate */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr minmax(120px, 160px)', gap: '12px', marginBottom: '12px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Guest Name *</label>
-                    <input
-                      type="text"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      placeholder="e.g. Martha Wayne"
-                      required
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Yacht *</label>
-                    <select value={yachtId} onChange={(e) => {
-                      setYachtId(e.target.value);
-                      setOfferedHourlyRate(null); // reset custom rate when yacht changes
-                    }} disabled={isReadOnly}>
-                      {yachts.map(y => (
-                        <option key={y.id} value={y.id}>{y.name} (Max {y.capacity})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>
-                      Rate/hr ($)
-                      {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
-                        <span style={{ color: 'var(--warning, #f59e0b)', fontSize: '0.7rem', marginLeft: '6px', fontWeight: 600 }}>✎ Custom</span>
-                      )}
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="1"
-                      value={offeredHourlyRate !== null ? offeredHourlyRate : (selectedYacht?.hourlyRate || '')}
-                      onChange={(e) => setOfferedHourlyRate(e.target.value === '' ? null : Number(e.target.value))}
-                      disabled={isReadOnly}
-                      placeholder={selectedYacht ? `Std: $${selectedYacht.hourlyRate}` : ''}
-                      style={offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate
-                        ? { borderColor: '#f59e0b', color: '#f59e0b' }
-                        : {}}
-                    />
-                    {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
-                      <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                        Std: ${selectedYacht.hourlyRate}/hr
-                        <button type="button" onClick={() => setOfferedHourlyRate(null)} style={{ marginLeft: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem', textDecoration: 'underline' }}>Reset</button>
-                      </small>
-                    )}
-                  </div>
-                </div>
-
-                {/* Row 1.5: Guest Email + Guest Phone */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Guest Email</label>
-                    <input
-                      type="email"
-                      value={guestEmail}
-                      onChange={(e) => setGuestEmail(e.target.value)}
-                      placeholder="e.g. martha.wayne@example.com"
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
-                    <input
-                      type="text"
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="e.g. +1234567890"
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-
-                {/* Row 2: Start Date/Time + Duration + End Date/Time */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(90px, 130px) 1fr', gap: '12px', marginBottom: '12px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Start Date & Time</label>
-                    <input
-                      type="datetime-local"
-                      value={startDate}
-                      onChange={(e) => handleStartDateChange(e.target.value)}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Duration (hrs)</label>
-                    <input
-                      type="number"
-                      min="0.5"
-                      step="0.5"
-                      value={formDuration}
-                      onChange={(e) => handleDurationChange(e.target.value)}
-                      disabled={isReadOnly}
-                      placeholder="e.g. 3"
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>End Date & Time</label>
-                    <input
-                      type="datetime-local"
-                      value={endDate}
-                      onChange={(e) => handleEndDateChange(e.target.value)}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                </div>
-
-                {liveConflict && (
-                  <div style={{
-                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
-                    color: '#ef4444',
-                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    fontSize: '0.78rem',
-                    marginBottom: '12px',
-                    lineHeight: '1.4',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ fontSize: '1rem' }}>⚠️</span>
-                    <span>{liveConflict.message}</span>
-                  </div>
-                )}
-
-                {/* Row 3: Adults + Children + Booking Status */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(80px, 100px) minmax(80px, 100px) 1fr', gap: '12px', marginBottom: '16px' }}>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Adults</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={adults}
-                      onChange={(e) => setAdults(e.target.value === '' ? '' : Number(e.target.value))}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Children</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={children}
-                      onChange={(e) => setChildren(e.target.value === '' ? '' : Number(e.target.value))}
-                      disabled={isReadOnly}
-                    />
-                  </div>
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label>Booking Status</label>
-                    <select value={bookingStatus} onChange={(e) => setBookingStatus(e.target.value)} disabled={isReadOnly}>
-                      <option value="Pending">Pending</option>
-                      <option value="Confirmed">Confirmed</option>
-                      <option value="Completed">Completed</option>
-                      <option value="Cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                </div>
-
-
-                {/* Additional Services — 3 columns */}
-                <div style={{ backgroundColor: 'var(--bg-tertiary)', padding: '14px 16px', borderRadius: '8px', marginBottom: '16px' }}>
-                  <h4 style={{ margin: '0 0 12px 0', fontSize: '0.95rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px' }}>
-                    Additional Services & Charges
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Decoration ($)</label>
-                      <input type="number" min="0" value={decorationCharges} onChange={(e) => setDecorationCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Water Slide ($)</label>
-                      <input type="number" min="0" value={waterSlideCharges} onChange={(e) => setWaterSlideCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Jet Ski ($)</label>
-                      <input type="number" min="0" value={jetSkiCharges} onChange={(e) => setJetSkiCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Catering ($)</label>
-                      <input type="number" min="0" value={cateringCharges} onChange={(e) => setCateringCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>Other Service ($)</label>
-                      <input type="number" min="0" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
-                    </div>
-                    <div className="form-group" style={{ margin: 0 }}>
-                      <label>VAT Rate</label>
-                      <select value={vatRate} onChange={(e) => setVatRate(Number(e.target.value))} disabled={isReadOnly}>
-                        <option value="0">No VAT (0%)</option>
-                        <option value="5">VAT 5%</option>
-                        <option value="7">VAT 7%</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dynamic Booking Statement + Payment side by side */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
-                  {/* Quote summary */}
-                  <div>
-                    <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem' }}>Booking Statement</h4>
-                    <div className="flex flex-col gap-8" style={{ fontSize: '0.85rem' }}>
-                      <div className="flex justify-between">
-                        <span>
-                          Yacht Charter ({selectedYacht?.name}
-                          {offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate ? (
-                            <>
-                              {' '}@ <span style={{ color: '#f59e0b', fontWeight: 600 }}>${effectiveRate}/hr</span>
-                              <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '4px', fontSize: '0.8rem' }}>${selectedYacht.hourlyRate}</span>
-                            </>
-                          ) : (
-                            ` @ $${effectiveRate}/hr`
-                          )}
-                          {` × ${tempDuration.toFixed(1)}h`}):
-                        </span>
-                        <span>${yachtCost}</span>
-                      </div>
-                      {decCost > 0 && <div className="flex justify-between"><span>Decoration:</span><span>${decCost}</span></div>}
-                      {slideCost > 0 && <div className="flex justify-between"><span>Water Slide:</span><span>${slideCost}</span></div>}
-                      {skiCost > 0 && <div className="flex justify-between"><span>Jet Ski:</span><span>${skiCost}</span></div>}
-                      {catCost > 0 && <div className="flex justify-between"><span>Catering:</span><span>${catCost}</span></div>}
-                      {othCost > 0 && <div className="flex justify-between"><span>Other:</span><span>${othCost}</span></div>}
-                      <div className="flex justify-between" style={{ fontWeight: 500, borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
-                        <span>Subtotal:</span><span>${tempSubtotal}</span>
-                      </div>
-                      <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
-                        <span>VAT ({vatRate}%):</span><span>${tempVatAmount}</span>
-                      </div>
-                      <div className="flex justify-between" style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                        <span>Grand Total:</span><span>${tempTotalAmount}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Payment */}
-                  <div>
-                    <h4 style={{ margin: '0 0 10px', fontSize: '0.95rem' }}>Payment</h4>
-                    <div className="form-group" style={{ marginBottom: '12px' }}>
-                      <label>Payment Method</label>
-                      <select value={paymentMode} onChange={(e) => setPaymentMode(e.target.value)} disabled={isReadOnly}>
-                        <option value="Card">Card</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Bank Transfer">Bank Transfer</option>
-                        <option value="Online">Online</option>
-                      </select>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Amount Collected ($)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max={tempTotalAmount}
-                        value={paymentAmount}
-                        onChange={(e) => setPaymentAmount(e.target.value === '' ? '' : Number(e.target.value))}
-                        disabled={isReadOnly}
-                      />
-                      <small style={{ color: 'var(--text-muted)' }}>
-                        Remaining: ${tempTotalAmount - (Number(paymentAmount) || 0)}
-                      </small>
-                    </div>
-                  </div>
-                </div>
+                {renderBookingFormFields()}
               </div>
               <div className="modal-footer" style={{ alignItems: 'center' }}>
                 {/* Salesperson — far left */}
