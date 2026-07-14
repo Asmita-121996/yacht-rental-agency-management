@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function DashboardAdmin({
   yachts,
@@ -33,8 +33,22 @@ export default function DashboardAdmin({
   const [newUserPassword, setNewUserPassword] = useState("");
 
   // System defaults state
-  const [cateringPrice, setCateringPrice] = useState(systemDefaults.cateringPricePerGuest);
+  const [cateringPrice, setCateringPrice] = useState(systemDefaults.cateringPricePerGuest || 50);
+  const [whatsappProvider, setWhatsappProvider] = useState(systemDefaults.whatsappProvider || "none");
+  const [whatsappApiUrl, setWhatsappApiUrl] = useState(systemDefaults.whatsappApiUrl || "");
+  const [whatsappToken, setWhatsappToken] = useState(systemDefaults.whatsappToken || "");
+  const [whatsappPhoneId, setWhatsappPhoneId] = useState(systemDefaults.whatsappPhoneId || "");
   const [defaultsSaved, setDefaultsSaved] = useState(false);
+
+  useEffect(() => {
+    if (systemDefaults) {
+      setCateringPrice(systemDefaults.cateringPricePerGuest || 50);
+      setWhatsappProvider(systemDefaults.whatsappProvider || "none");
+      setWhatsappApiUrl(systemDefaults.whatsappApiUrl || "");
+      setWhatsappToken(systemDefaults.whatsappToken || "");
+      setWhatsappPhoneId(systemDefaults.whatsappPhoneId || "");
+    }
+  }, [systemDefaults]);
 
   // Open Add/Edit Yacht modal
   const handleOpenYachtModal = (yacht = null) => {
@@ -103,7 +117,11 @@ export default function DashboardAdmin({
   const handleSaveDefaults = (e) => {
     e.preventDefault();
     onUpdateSystemDefaults({
-      cateringPricePerGuest: Number(cateringPrice)
+      cateringPricePerGuest: Number(cateringPrice),
+      whatsappProvider,
+      whatsappApiUrl,
+      whatsappToken,
+      whatsappPhoneId
     });
     setDefaultsSaved(true);
     setTimeout(() => setDefaultsSaved(false), 3000);
@@ -395,7 +413,64 @@ export default function DashboardAdmin({
                 />
               </div>
 
-              <button type="submit" className="btn btn-primary">Save Global System Config</button>
+              <div style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '20px', paddingBottom: '10px' }}>
+                <h4 style={{ marginBottom: '16px', color: 'var(--brand, #3b82f6)', fontSize: '1rem', fontWeight: 600 }}>💬 WhatsApp API Integration Settings</h4>
+                
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <label>API Provider</label>
+                  <select value={whatsappProvider} onChange={(e) => setWhatsappProvider(e.target.value)} style={{ padding: '8px', fontSize: '0.9rem', width: '100%' }}>
+                    <option value="none">None / Manual WhatsApp Web (Browser Fallback)</option>
+                    <option value="meta">WhatsApp Cloud API (Meta Graph API)</option>
+                    <option value="twilio">Twilio Programmable WhatsApp Messaging</option>
+                  </select>
+                </div>
+
+                {whatsappProvider !== 'none' && (
+                  <div style={{ display: 'flex', flexDirection: 'col', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div className="form-group">
+                        <label>
+                          {whatsappProvider === 'twilio' ? 'Account SID' : 'Phone Number ID'}
+                        </label>
+                        <input
+                          type="text"
+                          placeholder={whatsappProvider === 'twilio' ? 'e.g. ACxxxxxxxxxxxxxxxx' : 'e.g. 108428471847184'}
+                          value={whatsappPhoneId}
+                          onChange={(e) => setWhatsappPhoneId(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div className="form-group">
+                        <label>
+                          {whatsappProvider === 'twilio' ? 'Auth Token' : 'Access Token (Bearer)'}
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••••••••••••••••••••••••••••"
+                          value={whatsappToken}
+                          onChange={(e) => setWhatsappToken(e.target.value)}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label>
+                        {whatsappProvider === 'twilio' ? 'From WhatsApp Number (Twilio sender ID)' : 'Custom API URL Endpoint (Optional override)'}
+                      </label>
+                      <input
+                        type="text"
+                        placeholder={whatsappProvider === 'twilio' ? 'e.g. whatsapp:+14155238886' : 'e.g. https://graph.facebook.com/v20.0/...'}
+                        value={whatsappApiUrl}
+                        onChange={(e) => setWhatsappApiUrl(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>Save Global System Config</button>
               
               {defaultsSaved && (
                 <div className="badge badge-success" style={{ padding: '10px', borderRadius: '6px', textAlign: 'center', display: 'block', fontWeight: 500 }}>

@@ -53,6 +53,8 @@ export default function DashboardSales({
   
   // Form fields
   const [guestName, setGuestName] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [yachtId, setYachtId] = useState(yachts[0]?.id || "");
   const [startDate, setStartDate] = useState(`${todayStr}T10:00`);
   const [endDate, setEndDate] = useState(`${todayStr}T14:00`);
@@ -151,6 +153,8 @@ export default function DashboardSales({
   const handleOpenNewBooking = () => {
     setEditingBooking(null);
     setGuestName("");
+    setGuestEmail("");
+    setPhoneNumber("");
     setYachtId(yachts[0]?.id || "");
     const datePrefix = selectedDate;
     setStartDate(`${datePrefix}T10:00`);
@@ -179,6 +183,8 @@ export default function DashboardSales({
   const handleOpenEditBooking = (booking) => {
     setEditingBooking(booking);
     setGuestName(booking.guestName);
+    setGuestEmail(booking.guestEmail || "");
+    setPhoneNumber(booking.phoneNumber || "");
     setYachtId(booking.yachtId);
     setStartDate(formatToLocalDatetime(booking.startDate));
     setEndDate(formatToLocalDatetime(booking.endDate));
@@ -251,6 +257,8 @@ export default function DashboardSales({
     if (isReadOnly) return;
     setEditingBooking(null);
     setGuestName("");
+    setGuestEmail("");
+    setPhoneNumber("");
     setYachtId(clickedYachtId);
     setDecorationCharges(0);
     setWaterSlideCharges(0);
@@ -316,6 +324,8 @@ export default function DashboardSales({
       // Update form state with parsed values
       setEditingBooking(null);
       setGuestName(booking.guestName || "");
+      setGuestEmail("");
+      setPhoneNumber("");
       setYachtId(booking.yachtId);
       setStartDate(booking.startDate);
       setEndDate(booking.endDate);
@@ -347,6 +357,28 @@ export default function DashboardSales({
     } finally {
       setIsParsingQuickAdd(false);
     }
+  };
+
+  const handleSendWhatsAppWeb = () => {
+    if (!phoneNumber) return;
+    const yacht = yachts.find(y => y.id === yachtId);
+    const start = new Date(startDate).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    const totalAmount = tempTotalAmount;
+    const paidAmount = Number(paymentAmount) || 0;
+    const remaining = Math.max(0, totalAmount - paidAmount);
+
+    const messageText = `Hello ${guestName}, your yacht charter booking has been CONFIRMED.
+Yacht: ${yacht ? yacht.name : 'SQX Yacht'}
+Start: ${start}
+Duration: ${formDuration} hour(s)
+Total: $${totalAmount.toFixed(2)}
+Paid: $${paidAmount.toFixed(2)}
+Remaining: $${remaining.toFixed(2)}
+Please arrive 15 minutes early. Thank you!`;
+
+    const encodedText = encodeURIComponent(messageText);
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=${encodedText}`, '_blank');
   };
 
   // Handle form submission (Create or Update)
@@ -390,6 +422,8 @@ export default function DashboardSales({
 
     const bookingData = {
       guestName,
+      guestEmail,
+      phoneNumber,
       yachtId,
       startDate: new Date(startDate).toISOString(),
       endDate: new Date(endDate).toISOString(),
@@ -1011,6 +1045,30 @@ export default function DashboardSales({
                   </div>
                 </div>
 
+                {/* Row 1.5: Guest Email + Guest Phone */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Guest Email</label>
+                    <input
+                      type="email"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      placeholder="e.g. martha.wayne@example.com"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label>Phone Number</label>
+                    <input
+                      type="text"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="e.g. +1234567890"
+                      disabled={isReadOnly}
+                    />
+                  </div>
+                </div>
+
                 {/* Row 2: Start Date/Time + Duration + End Date/Time */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr minmax(90px, 130px) 1fr', gap: '12px', marginBottom: '12px' }}>
                   <div className="form-group" style={{ margin: 0 }}>
@@ -1234,10 +1292,20 @@ export default function DashboardSales({
                     Cancel Booking
                   </button>
                 )}
-                <button type="button" className="btn btn-secondary" onClick={() => setShowFormModal(false)}>
-                  Close
-                </button>
-                {!isReadOnly && (
+                 {isReadOnly && bookingStatus === "Confirmed" && phoneNumber && (
+                   <button
+                     type="button"
+                     className="btn"
+                     onClick={handleSendWhatsAppWeb}
+                     style={{ backgroundColor: '#25D366', borderColor: '#25D366', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}
+                   >
+                     💬 Send via WhatsApp Web
+                   </button>
+                 )}
+                 <button type="button" className="btn btn-secondary" onClick={() => setShowFormModal(false)}>
+                   Close
+                 </button>
+                 {!isReadOnly && (
                   <button type="submit" className="btn btn-primary">
                     {editingBooking ? "Update Booking" : "Confirm Booking"}
                   </button>

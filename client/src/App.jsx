@@ -19,7 +19,7 @@ export default function App() {
   // Backend Synchronized States
   const [yachts, setYachts] = useState([]);
   const [bookings, setBookings] = useState([]);
-  const [systemDefaults, setSystemDefaults] = useState({ cateringPricePerGuest: 50 });
+  const [systemDefaults, setSystemDefaults] = useState({ cateringPricePerGuest: 50, whatsappProvider: 'none', whatsappApiUrl: '', whatsappToken: '', whatsappPhoneId: '' });
   const [loading, setLoading] = useState(true);
 
   // Fetch initial data from Express backend
@@ -43,14 +43,14 @@ export default function App() {
         }),
         fetch('/api/settings').then(r => { 
           if (r.status === 401) throw new Error("Unauthorized"); 
-          if (!r.ok) return { cateringPricePerGuest: 50 }; 
+          if (!r.ok) return { cateringPricePerGuest: 50, whatsappProvider: 'none', whatsappApiUrl: '', whatsappToken: '', whatsappPhoneId: '' }; 
           return r.json(); 
         })
       ]);
       setUsers(Array.isArray(usersRes) ? usersRes : []);
       setYachts(Array.isArray(yachtsRes) ? yachtsRes : []);
       setBookings(Array.isArray(bookingsRes) ? bookingsRes : []);
-      setSystemDefaults(defaultsRes && typeof defaultsRes === 'object' ? defaultsRes : { cateringPricePerGuest: 50 });
+      setSystemDefaults(defaultsRes && typeof defaultsRes === 'object' ? defaultsRes : { cateringPricePerGuest: 50, whatsappProvider: 'none', whatsappApiUrl: '', whatsappToken: '', whatsappPhoneId: '' });
     } catch (err) {
       console.error("Failed to load YachtFlow backend configurations:", err);
       if (err.message === "Unauthorized") {

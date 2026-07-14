@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { resolveYachtId, parseNLPQuery } from '../services/nlpService.js';
+import { sendConfirmationEmail, sendWhatsAppAPI } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -43,7 +44,9 @@ router.get('/', requireAuth, async (req, res) => {
       actualChildren: b.actual_children !== null ? Number(b.actual_children) : 0,
       actualTotalGuests: b.actual_total_guests !== null ? Number(b.actual_total_guests) : null,
       paymentCollectedBy: b.payment_collected_by,
-      boardingStatus: b.boarding_status
+      boardingStatus: b.boarding_status,
+      guestEmail: b.guest_email,
+      phoneNumber: b.phone_number
     }));
 
     res.json(bookings);
@@ -59,7 +62,8 @@ router.post('/', requireAuth, async (req, res) => {
     guestName, adults, children, totalGuests, yachtId, startDate, endDate, durationHours,
     offeredHourlyRate, cateringEnabled, externalServiceCharges, subtotal, vatRate, vatAmount,
     totalAmount, paymentMode, paymentAmount, status, salesPerson,
-    decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges
+    decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges,
+    guestEmail, phoneNumber
   } = req.body;
 
   try {
@@ -80,7 +84,7 @@ router.post('/', requireAuth, async (req, res) => {
     }
 
     const newId = "b_" + Math.random().toString(36).substr(2, 9);
-    await db.bookings.create({
+    const createdBooking = await db.bookings.create({
       data: {
         id: newId,
         guest_name: guestName,
@@ -112,9 +116,18 @@ router.post('/', requireAuth, async (req, res) => {
         actual_children: req.body.actualChildren !== undefined ? Number(req.body.actualChildren) : 0,
         actual_total_guests: req.body.actualTotalGuests !== undefined ? Number(req.body.actualTotalGuests) : null,
         payment_collected_by: req.body.paymentCollectedBy || null,
-        boarding_status: req.body.boardingStatus || 'Scheduled'
+        boarding_status: req.body.boardingStatus || 'Scheduled',
+        guest_email: guestEmail || null,
+        phone_number: phoneNumber || null
       }
     });
+
+    // If new booking is confirmed, trigger automated communications
+    if (status === 'Confirmed') {
+      const yacht = await db.yachts.findUnique({ where: { id: yachtId } });
+      sendConfirmationEmail(createdBooking, yacht).catch(err => console.error("[Trigger] Mail sending error:", err));
+      sendWhatsAppAPI(createdBooking, yacht).catch(err => console.error("[Trigger] WhatsApp API sending error:", err));
+    }
 
     res.status(201).json({ id: newId, guestName, totalGuests, status });
   } catch (err) {
@@ -130,7 +143,8 @@ router.put('/:id', requireAuth, async (req, res) => {
     guestName, adults, children, totalGuests, yachtId, startDate, endDate, durationHours,
     offeredHourlyRate, cateringEnabled, externalServiceCharges, subtotal, vatRate, vatAmount,
     totalAmount, paymentMode, paymentAmount, status, salesPerson,
-    decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges
+    decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges,
+    guestEmail, phoneNumber
   } = req.body;
 
   try {
@@ -153,7 +167,10 @@ router.put('/:id', requireAuth, async (req, res) => {
       }
     }
 
-    await db.bookings.update({
+    const existing = await db.bookings.findUnique({ where: { id } });
+    const becameConfirmed = status === 'Confirmed' && (!existing || existing.status !== 'Confirmed');
+
+    const updatedBooking = await db.bookings.update({
       where: { id },
       data: {
         guest_name: guestName,
@@ -184,9 +201,18 @@ router.put('/:id', requireAuth, async (req, res) => {
         actual_children: req.body.actualChildren !== undefined ? Number(req.body.actualChildren) : undefined,
         actual_total_guests: req.body.actualTotalGuests !== undefined ? Number(req.body.actualTotalGuests) : undefined,
         payment_collected_by: req.body.paymentCollectedBy,
-        boarding_status: req.body.boardingStatus
+        boarding_status: req.body.boardingStatus,
+        guest_email: guestEmail,
+        phone_number: phoneNumber
       }
     });
+
+    // If transitioned to confirmed, trigger automated communications
+    if (becameConfirmed) {
+      const yacht = await db.yachts.findUnique({ where: { id: yachtId } });
+      sendConfirmationEmail(updatedBooking, yacht).catch(err => console.error("[Trigger] Mail sending error:", err));
+      sendWhatsAppAPI(updatedBooking, yacht).catch(err => console.error("[Trigger] WhatsApp API sending error:", err));
+    }
 
     res.json({ id, guestName, totalGuests, status });
   } catch (err) {

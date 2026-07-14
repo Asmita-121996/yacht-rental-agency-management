@@ -85,15 +85,6 @@ export default function Login({ users, onLogin }) {
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', padding: '12px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-tertiary)', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>💡 Quick-start Credentials (Type exactly):</div>
-          <ul style={{ paddingLeft: '16px', margin: 0 }}>
-            <li><strong>Admin</strong>: <code>admin@yachtflow.co</code> (password: <code>admin123</code>)</li>
-            <li><strong>Sales</strong>: <code>pradeesh@yachtflow.co</code> or <code>chetan@yachtflow.co</code> (password: <code>sales123</code>)</li>
-            <li><strong>Accounts</strong>: <code>accounts@yachtflow.co</code> (password: <code>accounts123</code>)</li>
-            <li><strong>Captain</strong>: <code>captain@yachtflow.co</code> (password: <code>captain123</code>)</li>
-          </ul>
-        </div>
       </div>
     </div>
   );
