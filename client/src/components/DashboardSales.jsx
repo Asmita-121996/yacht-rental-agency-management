@@ -52,6 +52,7 @@ export default function DashboardSales({
   const [editingBooking, setEditingBooking] = useState(null);
   const [toast, setToast] = useState(null); // { message: string, type: 'error' | 'success' }
   const [whatsAppWebPrompt, setWhatsAppWebPrompt] = useState(null); // { guestName, phoneNumber, text }
+  const [activeBottomTab, setActiveBottomTab] = useState("today-registry"); // "today-registry" | "all-registry" | "conflict-checker" | "fleet-rates"
   
   // Form fields
   const [guestName, setGuestName] = useState("");
@@ -889,323 +890,350 @@ Best regards,
         </div>
       </div>
 
-      {/* TODAY'S BOOKING REGISTRY & YACHT PRICING GUIDE */}
+      {/* TABBED OPERATIONS DESK (Registry, Conflict Checker, Pricing Guide, All Bookings) */}
       <style>{`
-        @media (max-width: 1024px) {
-          .dashboard-bottom-grid {
-            grid-template-columns: 1fr !important;
-          }
+        .ops-tab-btn {
+          padding: 12px 24px;
+          border: none;
+          background: none;
+          color: var(--text-muted);
+          border-bottom: 3px solid transparent;
+          font-weight: 700;
+          cursor: pointer;
+          font-size: 0.9rem;
+          white-space: nowrap;
+          transition: all 0.2s;
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
-        .hover-row:hover {
-          background-color: var(--bg-tertiary) !important;
+        .ops-tab-btn:hover {
+          color: var(--text-main);
+          background-color: var(--bg-tertiary);
+        }
+        .ops-tab-btn.active {
+          color: var(--brand) !important;
+          border-bottom-color: var(--brand) !important;
         }
       `}</style>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '2fr 1fr',
-        gap: '24px',
-        marginTop: '24px',
-        marginBottom: '24px'
-      }} className="dashboard-bottom-grid">
-        
-        {/* Today's Booking Registry Table */}
-        <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column', margin: 0 }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
-              📅 Voyage Registry ({new Date(selectedDate).toLocaleDateString([], { dateStyle: 'medium' })})
-            </h3>
-            <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}>
-              {todayBookings.length} Active Voyage{todayBookings.length !== 1 ? 's' : ''}
-            </span>
-          </div>
-          
-          <div style={{ flex: 1, overflowX: 'auto' }}>
-            {todayBookings.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>⚓</div>
-                <p style={{ margin: 0, fontSize: '0.9rem' }}>No charters scheduled for this date.</p>
-              </div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Period</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Yacht</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Guest / Agent</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Guests</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Total</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {todayBookings.map(b => {
-                    const yacht = yachts.find(y => y.id === b.yachtId);
-                    const timeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
-                                    ' - ' + 
-                                    new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                    
-                    let statusBadge = 'badge-info';
-                    if (b.status === 'Pending') statusBadge = 'badge-warning';
-                    if (b.status === 'Completed') statusBadge = 'badge-success';
 
-                    return (
-                      <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} className="hover-row">
-                        <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{timeStr}</td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--brand)' }}>{yacht ? yacht.name : 'Unknown'}</div>
-                          <small style={{ color: 'var(--text-muted)' }}>{b.durationHours} hrs</small>
-                        </td>
-                        <td style={{ padding: '12px 8px' }}>
-                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{b.guestName}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Rep: {b.salesPerson}</div>
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 500, color: 'var(--text-main)' }}>
-                          {b.adults + b.children} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({b.adults}A/{b.children}C)</span>
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
-                          ${Number(b.totalAmount).toFixed(2)}
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                          <span className={`badge ${statusBadge}`} style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
-                            {b.status}
-                          </span>
-                        </td>
-                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
-                          <button 
-                            className="btn btn-secondary" 
-                            style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px' }} 
-                            onClick={() => handleOpenEditBooking(b)}
-                          >
-                            Details
-                          </button>
+      <div className="card" style={{ marginTop: '24px', padding: '24px' }}>
+        {/* Tab Headers */}
+        <div style={{ 
+          display: 'flex', 
+          borderBottom: '1px solid var(--border-color)', 
+          gap: '8px', 
+          overflowX: 'auto', 
+          marginBottom: '24px',
+          paddingBottom: '2px'
+        }}>
+          <button
+            onClick={() => setActiveBottomTab("today-registry")}
+            className={`ops-tab-btn ${activeBottomTab === 'today-registry' ? 'active' : ''}`}
+          >
+            📅 Voyage Registry ({todayBookings.length})
+          </button>
+          
+          <button
+            onClick={() => setActiveBottomTab("all-registry")}
+            className={`ops-tab-btn ${activeBottomTab === 'all-registry' ? 'active' : ''}`}
+          >
+            📋 Search All Bookings ({filteredBookings.length})
+          </button>
+
+          <button
+            onClick={() => setActiveBottomTab("conflict-checker")}
+            className={`ops-tab-btn ${activeBottomTab === 'conflict-checker' ? 'active' : ''}`}
+          >
+            ⚡ Conflict Auditor
+          </button>
+
+          <button
+            onClick={() => setActiveBottomTab("fleet-rates")}
+            className={`ops-tab-btn ${activeBottomTab === 'fleet-rates' ? 'active' : ''}`}
+          >
+            🛥️ Fleet Pricing Guide
+          </button>
+        </div>
+
+        {/* Tab Contents */}
+        <div style={{ minHeight: '300px' }}>
+          
+          {/* Tab 1: Today's Voyage Registry */}
+          {activeBottomTab === 'today-registry' && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                  Voyages Scheduled for {new Date(selectedDate).toLocaleDateString([], { dateStyle: 'long' })}
+                </h3>
+              </div>
+              
+              <div style={{ overflowX: 'auto' }}>
+                {todayBookings.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '64px 16px', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '3rem', marginBottom: '16px' }}>⚓</div>
+                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 500 }}>No charters scheduled for this date.</p>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>Select another date on the timeline date navigator to check.</small>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Period</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Yacht</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Guest Name</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Guests</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Total Bill</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                        <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todayBookings.map(b => {
+                        const yacht = yachts.find(y => y.id === b.yachtId);
+                        const timeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+                                        ' - ' + 
+                                        new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        let statusBadge = 'badge-info';
+                        if (b.status === 'Pending') statusBadge = 'badge-warning';
+                        if (b.status === 'Completed') statusBadge = 'badge-success';
+
+                        return (
+                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{timeStr}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--brand)' }}>{yacht ? yacht.name : 'Unknown'}</div>
+                              <small style={{ color: 'var(--text-muted)' }}>{b.durationHours} hrs</small>
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{b.guestName}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Sales Rep: {b.salesPerson}</div>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 500, color: 'var(--text-main)' }}>
+                              {b.adults + b.children} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({b.adults}A/{b.children}C)</span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
+                              ${Number(b.totalAmount).toFixed(2)}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <span className={`badge ${statusBadge}`} style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
+                                {b.status}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px' }} 
+                                onClick={() => handleOpenEditBooking(b)}
+                              >
+                                Details
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 2: Search All Bookings */}
+          {activeBottomTab === 'all-registry' && (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>All Bookings Archive</h3>
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    placeholder="Search guest or sales exec..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ width: '220px', padding: '6px 12px', fontSize: '0.85rem' }}
+                  />
+                  <select value={yachtFilter} onChange={(e) => setYachtFilter(e.target.value)} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                    <option value="all">All Yachts</option>
+                    {yachts.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
+                  <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                    <option value="all">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Confirmed">Confirmed</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="table-wrapper" style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                      <th style={{ padding: '12px 8px' }}>Guest</th>
+                      <th style={{ padding: '12px 8px' }}>Yacht</th>
+                      <th style={{ padding: '12px 8px' }}>Time Window</th>
+                      <th style={{ padding: '12px 8px' }}>Pax (Est vs Act)</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'right' }}>Total Bill</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'right' }}>Paid</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>Status</th>
+                      <th style={{ padding: '12px 8px' }}>Sales Rep</th>
+                      <th style={{ padding: '12px 8px', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredBookings.length === 0 ? (
+                      <tr>
+                        <td colSpan="9" style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                          No bookings found matching search criteria.
                         </td>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+                    ) : (
+                      filteredBookings.map(b => {
+                        const y = yachts.find(yacht => yacht.id === b.yachtId);
+                        const isFullyPaid = b.paymentAmount >= b.totalAmount;
+                        const formattedStart = new Date(b.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " +
+                                               new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const formattedEnd = new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        
+                        let badgeClass = "badge-info";
+                        if (b.status === "Pending") badgeClass = "badge-warning";
+                        if (b.status === "Completed") badgeClass = "badge-success";
+                        if (b.status === "Cancelled") badgeClass = "badge-danger";
 
-        {/* Yacht Fleet & Pricing Guide */}
-        <div className="card" style={{ height: '100%', margin: 0 }}>
-          <div className="card-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Yacht Pricing Guide</h3>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {yachts.map(y => (
-              <div key={y.id} style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                padding: '12px', 
-                borderRadius: '8px', 
-                backgroundColor: 'var(--bg-tertiary)', 
-                border: '1px solid var(--border-color)' 
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.85rem' }}>{y.name}</div>
-                  <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Max Capacity: {y.capacity} passengers</small>
+                        const isBoarded = b.boardingStatus === "Boarded" || b.boardingStatus === "Completed";
+
+                        return (
+                          <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <td style={{ padding: '12px 8px', color: 'var(--text-main)' }}><strong>{b.guestName}</strong></td>
+                            <td style={{ padding: '12px 8px' }}>{y ? y.name : 'Unknown Yacht'}</td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div>{formattedStart}</div>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to {formattedEnd} ({b.durationHours} hrs)</div>
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>
+                              <div style={{ color: 'var(--text-main)' }}>{b.adults}A + {b.children}C</div>
+                              {isBoarded && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 500 }}>
+                                  Act: {b.actualAdults}A + {b.actualChildren}C
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right', color: 'var(--text-main)' }}><strong>${b.totalAmount}</strong></td>
+                            <td style={{ padding: '12px 8px', textAlign: 'right' }} className={isFullyPaid ? "text-success" : "text-danger"}>
+                              ${b.paymentAmount}
+                              {b.paymentCollectedBy && (
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                  by {b.paymentCollectedBy}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <span className={`badge ${badgeClass}`}>{b.status}</span>
+                            </td>
+                            <td style={{ padding: '12px 8px' }}>{b.salesPerson}</td>
+                            <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                              <div className="flex gap-8" style={{ justifyContent: 'center' }}>
+                                <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenEditBooking(b)}>
+                                  {isReadOnly ? "Details" : "Edit"}
+                                </button>
+                                <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem', borderRadius: '4px' }} onClick={() => handleOpenInvoice(b)}>
+                                  Receipt
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Quick Conflict Checker */}
+          {activeBottomTab === 'conflict-checker' && (
+            <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>⚡ Run Quick Conflict Audit</h3>
+              <form onSubmit={handleCheckAvailability} className="flex flex-col gap-16" style={{ backgroundColor: 'var(--bg-tertiary)', padding: '20px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                <div className="form-group">
+                  <label>Select Yacht</label>
+                  <select value={checkYacht} onChange={(e) => setCheckYacht(e.target.value)}>
+                    {yachts.map(y => (
+                      <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                  </select>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--brand)', fontSize: '0.95rem' }}>
-                    ${Number(y.hourlyRate).toFixed(0)}<span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)' }}>/hr</span>
+                <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="form-group">
+                    <label>Start Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      value={checkStart}
+                      onChange={(e) => setCheckStart(e.target.value)}
+                    />
                   </div>
-                  {y.description && <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{y.description}</small>}
+                  <div className="form-group">
+                    <label>End Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      value={checkEnd}
+                      onChange={(e) => setCheckEnd(e.target.value)}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* Quick Availability Checker & Info */}
-      <div className="grid-2">
-        <div className="card">
-          <div className="card-header">
-            <h3>Quick Conflict Checker</h3>
-          </div>
-          <form onSubmit={handleCheckAvailability} className="flex flex-col gap-16">
-            <div className="form-group">
-              <label>Select Yacht</label>
-              <select value={checkYacht} onChange={(e) => setCheckYacht(e.target.value)}>
-                {yachts.map(y => (
-                  <option key={y.id} value={y.id}>{y.name}</option>
-                ))}
-              </select>
+                <button type="submit" className="btn btn-primary" style={{ marginTop: '8px' }}>Check Yacht Availability</button>
+                
+                {checkResult && (
+                  <div className={`badge ${checkResult.success ? 'badge-success' : 'badge-danger'}`} style={{ padding: '12px', borderRadius: '6px', display: 'block', textAlign: 'center', fontWeight: 600, fontSize: '0.85rem', marginTop: '8px' }}>
+                    {checkResult.message}
+                  </div>
+                )}
+              </form>
             </div>
-            <div className="form-grid">
-              <div className="form-group">
-                <label>Start Date/Time</label>
-                <input
-                  type="datetime-local"
-                  value={checkStart}
-                  onChange={(e) => setCheckStart(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label>End Date/Time</label>
-                <input
-                  type="datetime-local"
-                  value={checkEnd}
-                  onChange={(e) => setCheckEnd(e.target.value)}
-                />
+          )}
+
+          {/* Tab 4: Yacht Fleet Pricing Guide */}
+          {activeBottomTab === 'fleet-rates' && (
+            <div>
+              <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Yacht Fleet & Pricing Reference Guide</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+                {yachts.map(y => (
+                  <div key={y.id} style={{ 
+                    padding: '16px', 
+                    borderRadius: '10px', 
+                    backgroundColor: 'var(--bg-tertiary)', 
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: '120px'
+                  }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                        <strong style={{ color: 'var(--text-main)', fontSize: '0.95rem' }}>{y.name}</strong>
+                        <span className="badge badge-info" style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
+                          Cap: {y.capacity} Pax
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 12px 0', lineHeight: '1.4' }}>
+                        {y.description || "Luxurious charter yacht equipped with modern amenities and standard service crew."}
+                      </p>
+                    </div>
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Standard Hourly Rate</span>
+                      <strong style={{ color: 'var(--brand)', fontSize: '1.1rem' }}>${Number(y.hourlyRate).toFixed(0)}<span style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>/hr</span></strong>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <button type="submit" className="btn btn-secondary">Run Conflict Audit</button>
-            
-            {checkResult && (
-              <div className={`badge ${checkResult.success ? 'badge-success' : 'badge-danger'}`} style={{ padding: '10px', borderRadius: '6px', display: 'block', textAlign: 'center', fontWeight: 500 }}>
-                {checkResult.message}
-              </div>
-            )}
-          </form>
-        </div>
+          )}
 
-        {/* Dynamic Rates Guide */}
-        <div className="card">
-          <div className="card-header">
-            <h3>Yacht Fleet Pricing Guide</h3>
-          </div>
-          <div className="table-wrapper">
-            <table>
-              <thead>
-                <tr>
-                  <th>Yacht Details</th>
-                  <th>Capacity</th>
-                  <th>Hourly Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {yachts.map(y => (
-                  <tr key={y.id}>
-                    <td>
-                      <strong>{y.name}</strong>
-                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>{y.description}</p>
-                    </td>
-                    <td>{y.capacity} max guests</td>
-                    <td><strong className="text-success">${y.hourlyRate}/hr</strong></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Bookings Register */}
-      <div className="card">
-        <div className="card-header">
-          <h3>Active Yacht Bookings Registry</h3>
-          <div className="flex gap-16 align-center">
-            <input
-              type="text"
-              placeholder="Search guest or sales exec..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{ width: '220px' }}
-            />
-            <select value={yachtFilter} onChange={(e) => setYachtFilter(e.target.value)}>
-              <option value="all">All Yachts</option>
-              {yachts.map(y => (
-                <option key={y.id} value={y.id}>{y.name}</option>
-              ))}
-            </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-              <option value="all">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Confirmed">Confirmed</option>
-              <option value="Completed">Completed</option>
-              <option value="Cancelled">Cancelled</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Guest</th>
-                <th>Yacht</th>
-                <th>Time Window</th>
-                <th>Pax (Est vs Act)</th>
-                <th>Total Bill</th>
-                <th>Paid</th>
-                <th>Status</th>
-                <th>Sales Rep</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBookings.length === 0 ? (
-                <tr>
-                  <td colSpan="9" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
-                    No bookings found matching search criteria.
-                  </td>
-                </tr>
-              ) : (
-                filteredBookings.map(b => {
-                  const y = yachts.find(yacht => yacht.id === b.yachtId);
-                  const isFullyPaid = b.paymentAmount >= b.totalAmount;
-                  const formattedStart = new Date(b.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) + " " +
-                                         new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  const formattedEnd = new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  
-                  let badgeClass = "badge-info";
-                  if (b.status === "Pending") badgeClass = "badge-warning";
-                  if (b.status === "Completed") badgeClass = "badge-success";
-                  if (b.status === "Cancelled") badgeClass = "badge-danger";
-
-                  const isBoarded = b.boardingStatus === "Boarded" || b.boardingStatus === "Completed";
-
-                  return (
-                    <tr key={b.id}>
-                      <td><strong>{b.guestName}</strong></td>
-                      <td>{y ? y.name : 'Unknown Yacht'}</td>
-                      <td>
-                        <div>{formattedStart}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>to {formattedEnd} ({b.durationHours} hrs)</div>
-                      </td>
-                      <td>
-                        <div>{b.adults}A + {b.children}C</div>
-                        {isBoarded && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--success)', fontWeight: 500 }}>
-                            Act: {b.actualAdults}A + {b.actualChildren}C
-                          </div>
-                        )}
-                      </td>
-                      <td><strong>${b.totalAmount}</strong></td>
-                      <td className={isFullyPaid ? "text-success" : "text-danger"}>
-                        ${b.paymentAmount}
-                        {b.paymentCollectedBy && (
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                            by {b.paymentCollectedBy}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`badge ${badgeClass}`}>{b.status}</span>
-                      </td>
-                      <td>{b.salesPerson}</td>
-                      <td>
-                        <div className="flex gap-8">
-                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => handleOpenEditBooking(b)}>
-                            {isReadOnly ? "Details" : "Edit"}
-                          </button>
-                          <button className="btn btn-secondary" style={{ padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => handleOpenInvoice(b)}>
-                            Receipt
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
         </div>
       </div>
 
