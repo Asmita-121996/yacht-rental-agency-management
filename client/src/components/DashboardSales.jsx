@@ -386,22 +386,32 @@ Please arrive 15 minutes early. Thank you!`;
     e.preventDefault();
     setFormError("");
 
+    const triggerFormError = (msg) => {
+      setFormError(msg);
+      alert(`⚠️ Save Booking Failed:\n\n${msg}`);
+      // Scroll modal body to top smoothly so the error message is visible
+      const modalBody = document.querySelector('.modal-content');
+      if (modalBody) {
+        modalBody.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
     // Basic Validation
     if (!guestName.trim()) {
-      setFormError("Guest name is required.");
+      triggerFormError("Guest name is required.");
       return;
     }
 
     const startVal = new Date(startDate);
     const endVal = new Date(endDate);
     if (endVal <= startVal) {
-      setFormError("End time must be after start time.");
+      triggerFormError("End time must be after start time.");
       return;
     }
 
     // Check conflict (convert to UTC ISO strings for timezone-agnostic check)
     if (liveConflict) {
-      setFormError(liveConflict.message);
+      triggerFormError(liveConflict.message);
       return;
     }
 
@@ -461,7 +471,7 @@ Please arrive 15 minutes early. Thank you!`;
       }
 
       if (result && !result.success) {
-        setFormError(result.error);
+        triggerFormError(result.error);
       } else {
         setShowFormModal(false);
       }
