@@ -14,6 +14,7 @@ export default function DashboardCaptain({
   const [paymentMode, setPaymentMode] = useState("Cash");
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [whatsAppWebPrompt, setWhatsAppWebPrompt] = useState(null); // { guestName, phoneNumber, text }
 
   const getDynamicPricing = () => {
     if (!selectedBooking) return { totalAmount: 0, outstandingBalance: 0, cateringCost: 0, subtotal: 0, vatAmount: 0 };
@@ -106,9 +107,32 @@ export default function DashboardCaptain({
     const result = await onCheckinBooking(selectedBooking.id, payload);
     if (result && result.success) {
       setSuccessMessage("Trip successfully marked as Completed!");
+      
+      const guestName = selectedBooking.guestName;
+      const phoneNumber = selectedBooking.phoneNumber;
+      const yachtObj = yachts.find(y => y.id === selectedBooking.yachtId);
+      const yachtName = yachtObj ? yachtObj.name : 'our yacht';
+      
       setTimeout(() => {
         setSelectedBooking(null);
         setSuccessMessage("");
+        
+        if (phoneNumber && (!systemDefaults || systemDefaults.whatsappProvider === 'none')) {
+          const thankYouText = `Dear *${guestName}*,
+
+Thank you for sailing with *YachtFlow* today! We hope you and your guests had a wonderful voyage on board *${yachtName}*.
+
+We look forward to welcoming you back on board soon! 🌊⛵
+
+Best regards,
+*YachtFlow Team*`;
+          
+          setWhatsAppWebPrompt({
+            guestName,
+            phoneNumber,
+            text: thankYouText
+          });
+        }
       }, 1500);
     } else {
       setErrorMessage(result?.error || "Failed to update boarding check-in.");
@@ -335,6 +359,80 @@ export default function DashboardCaptain({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Web Thank You Prompt */}
+      {whatsAppWebPrompt && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '480px' }}>
+            <div className="modal-header" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)', borderRadius: '12px 12px 0 0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '1.5rem' }}>🎉</span>
+                <div>
+                  <h3 style={{ margin: 0, color: 'white', fontSize: '1rem' }}>Trip Complete — Send Thank You</h3>
+                  <p style={{ margin: '2px 0 0', color: 'rgba(255,255,255,0.85)', fontSize: '0.78rem' }}>Send a short thank-you message via WhatsApp</p>
+                </div>
+              </div>
+              <button 
+                className="close-btn" 
+                onClick={() => setWhatsAppWebPrompt(null)}
+                style={{ color: 'white', opacity: 0.85 }}
+              >×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Guest</label>
+                <strong>{whatsAppWebPrompt.guestName}</strong>
+              </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Phone</label>
+                <span>{whatsAppWebPrompt.phoneNumber}</span>
+              </div>
+              <div style={{ marginBottom: '14px' }}>
+                <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Message Preview</label>
+                <div style={{ 
+                  backgroundColor: 'var(--bg-primary)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: '8px', 
+                  padding: '12px', 
+                  fontSize: '0.82rem', 
+                  whiteSpace: 'pre-wrap', 
+                  lineHeight: 1.6,
+                  color: 'var(--text-main)',
+                  maxHeight: '160px',
+                  overflowY: 'auto'
+                }}>
+                  {whatsAppWebPrompt.text}
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer" style={{ gap: '10px' }}>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => setWhatsAppWebPrompt(null)}
+              >
+                Skip
+              </button>
+              <button 
+                className="btn btn-primary"
+                style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)', border: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}
+                onClick={() => {
+                  const cleanPhone = whatsAppWebPrompt.phoneNumber.replace(/\D/g, '');
+                  let finalPhone = cleanPhone;
+                  if (cleanPhone.length === 10 && /^[6-9]/.test(cleanPhone)) {
+                    finalPhone = '91' + cleanPhone;
+                  }
+                  const encodedText = encodeURIComponent(whatsAppWebPrompt.text);
+                  window.open(`https://wa.me/${finalPhone}?text=${encodedText}`, '_blank');
+                  setWhatsAppWebPrompt(null);
+                }}
+              >
+                <span style={{ fontSize: '1.1rem' }}>💬</span>
+                Send on WhatsApp Web
+              </button>
+            </div>
           </div>
         </div>
       )}

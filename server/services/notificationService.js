@@ -340,3 +340,107 @@ Best regards,
     }
   }
 }
+
+/**
+ * Send booking thank you via WhatsApp API (Meta or Twilio) after trip completion
+ */
+export async function sendWhatsAppThankYouAPI(booking, yacht) {
+  if (!booking.phone_number) {
+    console.log(`[WhatsApp Service] Skip sending WhatsApp Thank You API for booking ${booking.id}: No phone number provided.`);
+    return;
+  }
+
+  const settings = await getSystemSettings();
+  const provider = settings.whatsappProvider || 'none';
+
+  if (provider === 'none') {
+    console.log(`[WhatsApp Service] WhatsApp API is not integrated (None selected) for Thank You message.`);
+    return;
+  }
+
+  const messageText = `Dear *${booking.guest_name}*,
+
+Thank you for sailing with *YachtFlow* today! We hope you and your guests had a wonderful voyage on board *${yacht ? yacht.name : 'our yacht'}*.
+
+We look forward to welcoming you back on board soon! 🌊⛵
+
+Best regards,
+*YachtFlow Team*`;
+
+  if (provider === 'meta') {
+    const phoneId = settings.whatsappPhoneId;
+    const token = settings.whatsappToken;
+    const apiUrl = settings.whatsappApiUrl || `https://graph.facebook.com/v20.0/${phoneId}/messages`;
+
+    if (!phoneId || !token) {
+      console.error(`[WhatsApp Service] Meta Cloud API configuration missing phoneId or token.`);
+      return;
+    }
+
+    try {
+      console.log(`[WhatsApp Service] Sending Thank You via Meta API to ${booking.phone_number}...`);
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: booking.phone_number.replace(/\D/g, ''),
+          type: "text",
+          text: { body: messageText }
+        })
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(JSON.stringify(resData));
+      }
+      console.log(`[WhatsApp Service] Meta Cloud API Thank You message sent. ID: ${resData.messages?.[0]?.id}`);
+    } catch (err) {
+      console.error(`[WhatsApp Service] Meta Cloud API Thank You sending failed:`, err.message);
+    }
+  } else if (provider === 'twilio') {
+    const token = settings.whatsappToken;
+    const phoneId = settings.whatsappPhoneId;
+    const fromPhone = settings.whatsappApiUrl || 'whatsapp:+14155238886';
+
+    if (!phoneId || !token) {
+      console.error(`[WhatsApp Service] Twilio configuration missing Account SID or Auth Token.`);
+      return;
+    }
+
+    const cleanedTo = booking.phone_number.replace(/\D/g, '');
+    const toPhone = `whatsapp:+${cleanedTo.startsWith('+') ? cleanedTo : cleanedTo}`;
+
+    try {
+      console.log(`[WhatsApp Service] Sending Thank You via Twilio API to ${toPhone}...`);
+      const url = `https://api.twilio.com/2010-04-01/Accounts/${phoneId}/Messages.json`;
+      const authHeader = 'Basic ' + Buffer.from(`${phoneId}:${token}`).toString('base64');
+      
+      const bodyParams = new URLSearchParams();
+      bodyParams.append('From', fromPhone);
+      bodyParams.append('To', toPhone);
+      bodyParams.append('Body', messageText);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: bodyParams.toString()
+      });
+
+      const resData = await response.json();
+      if (!response.ok) {
+        throw new Error(JSON.stringify(resData));
+      }
+      console.log(`[WhatsApp Service] Twilio Thank You message sent successfully. SID: ${resData.sid}`);
+    } catch (err) {
+      console.error(`[WhatsApp Service] Twilio Thank You sending failed:`, err.message);
+    }
+  }
+}
+

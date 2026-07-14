@@ -2,7 +2,7 @@ import express from 'express';
 import db from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { resolveYachtId, parseNLPQuery } from '../services/nlpService.js';
-import { sendConfirmationEmail, sendWhatsAppAPI } from '../services/notificationService.js';
+import { sendConfirmationEmail, sendWhatsAppAPI, sendWhatsAppThankYouAPI } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -290,6 +290,10 @@ router.put('/:id/checkin', requireAuth, async (req, res) => {
         payment_mode: addedPaid > 0 ? (paymentMode || 'Cash') : booking.payment_mode
       }
     });
+
+    if (updated.status === 'Completed') {
+      sendWhatsAppThankYouAPI(updated, yacht).catch(err => console.error("[Trigger] WhatsApp Thank You API sending error:", err));
+    }
 
     res.json({ success: true, booking: {
       id: updated.id,
