@@ -430,6 +430,11 @@ Best regards,
       return;
     }
 
+    if (!phoneNumber.trim()) {
+      triggerFormError("Phone number is required.");
+      return;
+    }
+
     const startVal = new Date(startDate);
     const endVal = new Date(endDate);
     if (endVal <= startVal) {
@@ -592,6 +597,16 @@ Best regards,
     const isSameDay = b.startDate && b.startDate.slice(0, 10) === selectedDate;
     return (b.status === "Pending" || b.status === "Confirmed") && new Date(b.endDate) < new Date() && isSameDay;
   });
+
+  // Today's Bookings for the registry table (based on selectedDate)
+  const todayBookings = bookings.filter(b => {
+    if (!b.startDate || !b.endDate) return false;
+    const bStart = new Date(b.startDate);
+    const bEnd = new Date(b.endDate);
+    const selDateStart = new Date(selectedDate + 'T00:00:00');
+    const selDateEnd = new Date(selectedDate + 'T23:59:59');
+    return bStart <= selDateEnd && bEnd >= selDateStart;
+  }).sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
   // Filtered Bookings for the list
   const filteredBookings = bookings.filter(booking => {
@@ -874,6 +889,139 @@ Best regards,
         </div>
       </div>
 
+      {/* TODAY'S BOOKING REGISTRY & YACHT PRICING GUIDE */}
+      <style>{`
+        @media (max-width: 1024px) {
+          .dashboard-bottom-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        .hover-row:hover {
+          background-color: var(--bg-tertiary) !important;
+        }
+      `}</style>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '2fr 1fr',
+        gap: '24px',
+        marginTop: '24px',
+        marginBottom: '24px'
+      }} className="dashboard-bottom-grid">
+        
+        {/* Today's Booking Registry Table */}
+        <div className="card" style={{ height: '100%', display: 'flex', flexDirection: 'column', margin: 0 }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>
+              📅 Voyage Registry ({new Date(selectedDate).toLocaleDateString([], { dateStyle: 'medium' })})
+            </h3>
+            <span className="badge badge-info" style={{ padding: '4px 10px', fontSize: '0.75rem', borderRadius: '4px' }}>
+              {todayBookings.length} Active Voyage{todayBookings.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          
+          <div style={{ flex: 1, overflowX: 'auto' }}>
+            {todayBookings.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '12px' }}>⚓</div>
+                <p style={{ margin: 0, fontSize: '0.9rem' }}>No charters scheduled for this date.</p>
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Period</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Yacht</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600 }}>Guest / Agent</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Guests</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'right' }}>Total</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '12px 8px', color: 'var(--text-muted)', fontWeight: 600, textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {todayBookings.map(b => {
+                    const yacht = yachts.find(y => y.id === b.yachtId);
+                    const timeStr = new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + 
+                                    ' - ' + 
+                                    new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    let statusBadge = 'badge-info';
+                    if (b.status === 'Pending') statusBadge = 'badge-warning';
+                    if (b.status === 'Completed') statusBadge = 'badge-success';
+
+                    return (
+                      <tr key={b.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background-color 0.2s' }} className="hover-row">
+                        <td style={{ padding: '12px 8px', fontWeight: 600, color: 'var(--text-main)' }}>{timeStr}</td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--brand)' }}>{yacht ? yacht.name : 'Unknown'}</div>
+                          <small style={{ color: 'var(--text-muted)' }}>{b.durationHours} hrs</small>
+                        </td>
+                        <td style={{ padding: '12px 8px' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{b.guestName}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Rep: {b.salesPerson}</div>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 500, color: 'var(--text-main)' }}>
+                          {b.adults + b.children} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({b.adults}A/{b.children}C)</span>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'right', fontWeight: 700, color: 'var(--text-main)' }}>
+                          ${Number(b.totalAmount).toFixed(2)}
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                          <span className={`badge ${statusBadge}`} style={{ fontSize: '0.75rem', borderRadius: '4px' }}>
+                            {b.status}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', borderRadius: '4px' }} 
+                            onClick={() => handleOpenEditBooking(b)}
+                          >
+                            Details
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+
+        {/* Yacht Fleet & Pricing Guide */}
+        <div className="card" style={{ height: '100%', margin: 0 }}>
+          <div className="card-header" style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '16px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>🛥️ Yacht Pricing Guide</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {yachts.map(y => (
+              <div key={y.id} style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                padding: '12px', 
+                borderRadius: '8px', 
+                backgroundColor: 'var(--bg-tertiary)', 
+                border: '1px solid var(--border-color)' 
+              }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.85rem' }}>{y.name}</div>
+                  <small style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Max Capacity: {y.capacity} passengers</small>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--brand)', fontSize: '0.95rem' }}>
+                    ${Number(y.hourlyRate).toFixed(0)}<span style={{ fontSize: '0.7rem', fontWeight: 400, color: 'var(--text-muted)' }}>/hr</span>
+                  </div>
+                  {y.description && <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{y.description}</small>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
       {/* Quick Availability Checker & Info */}
       <div className="grid-2">
         <div className="card">
@@ -1142,7 +1290,7 @@ Best regards,
                     />
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label>Phone Number</label>
+                    <label>Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
                     <input
                       type="text"
                       value={phoneNumber}
