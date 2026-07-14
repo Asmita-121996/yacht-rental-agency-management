@@ -238,30 +238,31 @@ export async function sendWhatsAppAPI(booking, yacht) {
   const paidAmount = Number(booking.payment_amount);
   const remaining = Math.max(0, totalAmount - paidAmount);
 
-  const messageText = `🌟 *YACHT CHARTER CONFIRMATION* 🌟
+  const messageText = `*YACHT CHARTER CONFIRMATION*
+===================================
 
 Dear *${booking.guest_name}*,
 
-We are delighted to confirm your upcoming luxury yacht charter with *YachtFlow*! ⚓✨
+We are pleased to confirm your upcoming yacht charter with *YachtFlow*.
 
 Here is your official voyage itinerary and booking summary:
 
-🗓️ *Voyage Details:*
-• *Booking ID:* ${booking.id}
-• *Yacht:* ${yacht ? yacht.name : 'SQX Yacht'}
-• *Departure:* ${start}
-• *Duration:* ${booking.duration_hours} hour(s)
-• *Status:* Confirmed ✅
+*Voyage Details:*
+- *Booking ID:* ${booking.id}
+- *Yacht:* ${yacht ? yacht.name : 'SQX Yacht'}
+- *Departure:* ${start}
+- *Duration:* ${booking.duration_hours} hour(s)
+- *Status:* [Confirmed]
 
-💰 *Financial Summary:*
-• *Total Booking Amount:* $${totalAmount.toFixed(2)}
-• *Amount Paid:* $${paidAmount.toFixed(2)}
-• *Outstanding Balance:* $${remaining.toFixed(2)}
+*Financial Summary:*
+- *Total Booking Amount:* $${totalAmount.toFixed(2)}
+- *Amount Paid:* $${paidAmount.toFixed(2)}
+- *Outstanding Balance:* $${remaining.toFixed(2)}
 
-📋 *Boarding Instructions:*
+*Boarding Instructions:*
 Please arrive at the marina *15 minutes prior* to your scheduled departure time. Ensure all boarding guests have valid identification documents.
 
-Thank you for choosing YachtFlow. We look forward to welcoming you on board for an unforgettable experience! 🌊🛥️
+Thank you for choosing YachtFlow. We look forward to welcoming you on board.
 
 Best regards,
 *YachtFlow Reservations Team*`;
