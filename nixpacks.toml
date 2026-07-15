@@ -9,7 +9,7 @@ cmds = [
 [phases.build]
 cmds = [
   "npm run build --prefix client",
-  "cd server && npx prisma generate --schema=prisma/schema.prisma --config=prisma.config.ts"
+  "cd server && ./node_modules/.bin/prisma generate --schema=prisma/schema.prisma --config=prisma.config.ts"
 ]
 
 [start]
