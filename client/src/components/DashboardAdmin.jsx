@@ -219,7 +219,7 @@ export default function DashboardAdmin({
                     <tr key={y.id}>
                       <td><strong>{y.name}</strong></td>
                       <td>{y.capacity} guests max</td>
-                      <td><strong className="text-success">${y.hourlyRate}/hr</strong></td>
+                      <td><strong className="text-success">AED {y.hourlyRate}/hr</strong></td>
                       <td>{y.description}</td>
                       <td>
                         <div className="flex gap-8">
@@ -404,7 +404,7 @@ export default function DashboardAdmin({
               </div>
               
               <div className="form-group">
-                <label>Catering Service Fee per Guest ($)</label>
+                <label>Catering Service Fee per Guest (AED)</label>
                 <input
                   type="number"
                   min="0"
@@ -516,7 +516,7 @@ export default function DashboardAdmin({
                   </div>
 
                   <div className="form-group">
-                    <label>Hourly Base Charter Rate ($) *</label>
+                    <label>Hourly Base Charter Rate (AED) *</label>
                     <input
                       type="number"
                       min="1"

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import logoImg from '../assets/logo.png';
 
 export default function Login({ users, onLogin }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -40,7 +42,9 @@ export default function Login({ users, onLogin }) {
     <div className="login-wrapper">
       <div className="login-card card">
         <div className="login-header">
-          <div className="login-logo-icon">YF</div>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+            <img src={logoImg} alt="YachtFlow Logo" style={{ height: '70px', width: 'auto', objectFit: 'contain' }} />
+          </div>
           <h2>YachtFlow</h2>
           <p className="login-tagline">Charter Bookings & Revenue Management</p>
         </div>
@@ -64,16 +68,38 @@ export default function Login({ users, onLogin }) {
             />
           </div>
 
-          <div className="form-group">
+          <div className="form-group" style={{ position: 'relative' }}>
             <label>Password *</label>
-            <input
-              type="password"
-              placeholder="••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              style={{ padding: '10px', fontSize: '0.95rem' }}
-              required
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ padding: '10px 40px 10px 10px', fontSize: '0.95rem', width: '100%', boxSizing: 'border-box' }}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                style={{
+                  position: 'absolute',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#6b7280',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.1rem',
+                  zIndex: 2
+                }}
+              >
+                {showPassword ? '👁️' : '👁️‍🗨️'}
+              </button>
+            </div>
           </div>
 
           <button

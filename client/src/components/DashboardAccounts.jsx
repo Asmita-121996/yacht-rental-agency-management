@@ -420,11 +420,11 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
       <div className="metrics-grid">
         <div className="metric-card">
           <div className="metric-icon-wrapper color-revenue">
-            $
+            AED
           </div>
           <div className="metric-details">
             <span className="metric-label">Total Revenue</span>
-            <span className="metric-value">${totalRevenue.toLocaleString()}</span>
+            <span className="metric-value">AED {totalRevenue.toLocaleString()}</span>
             <span className="metric-subtext text-success">Active Bookings Booked</span>
           </div>
         </div>
@@ -435,7 +435,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
           </div>
           <div className="metric-details">
             <span className="metric-label">Cash Collected</span>
-            <span className="metric-value">${totalCollected.toLocaleString()}</span>
+            <span className="metric-value">AED {totalCollected.toLocaleString()}</span>
             <span className="metric-subtext text-success" style={{ fontWeight: 500 }}>
               {totalRevenue > 0 ? ((totalCollected / totalRevenue) * 100).toFixed(0) : 0}% Liquidity
             </span>
@@ -448,7 +448,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
           </div>
           <div className="metric-details">
             <span className="metric-label">Accounts Receivable</span>
-            <span className="metric-value">${totalPending.toLocaleString()}</span>
+            <span className="metric-value">AED {totalPending.toLocaleString()}</span>
             <span className="metric-subtext text-danger">Uncollected balances</span>
           </div>
         </div>
@@ -459,7 +459,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
           </div>
           <div className="metric-details">
             <span className="metric-label">Estimated Profits</span>
-            <span className="metric-value">${Math.round(estimatedProfit).toLocaleString()}</span>
+            <span className="metric-value">AED {Math.round(estimatedProfit).toLocaleString()}</span>
             <span className="metric-subtext text-success">~{totalRevenue > 0 ? ((estimatedProfit / totalRevenue) * 100).toFixed(0) : 0}% Margin estimate</span>
           </div>
         </div>
@@ -474,7 +474,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
           </div>
           <div className="flex align-center gap-16" style={{ backgroundColor: 'var(--bg-tertiary)', padding: '10px 16px', borderRadius: '8px' }}>
             <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              May: <strong>${momStats.prevVal.toLocaleString()}</strong> &rarr; June: <strong>${momStats.currentVal.toLocaleString()}</strong>
+              May: <strong>AED {momStats.prevVal.toLocaleString()}</strong> &rarr; June: <strong>AED {momStats.currentVal.toLocaleString()}</strong>
             </span>
             <span className={`badge ${momStats.increase ? 'badge-success' : 'badge-danger'}`} style={{ padding: '4px 10px', fontSize: '0.85rem' }}>
               {momStats.increase ? '▲' : '▼'} {momStats.pct}% MoM
@@ -497,11 +497,11 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
                   <div className="flex gap-8" style={{ height: '100%', width: '100%', alignItems: 'flex-end', justifyContent: 'center' }}>
                     {/* Revenue Bar */}
                     <div className="chart-bar" style={{ height: `${heightPct}%`, backgroundColor: 'var(--brand)', maxWidth: '24px' }}>
-                      <span className="chart-tooltip">${trend.total.toLocaleString()}</span>
+                      <span className="chart-tooltip">AED {trend.total.toLocaleString()}</span>
                     </div>
                     {/* Collected Bar */}
                     <div className="chart-bar" style={{ height: `${colHeightPct}%`, backgroundColor: 'var(--success)', maxWidth: '24px' }}>
-                      <span className="chart-tooltip">${trend.collected.toLocaleString()}</span>
+                      <span className="chart-tooltip">AED {trend.collected.toLocaleString()}</span>
                     </div>
                   </div>
                   <div className="chart-bar-label">{trend.label}</div>
@@ -524,7 +524,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
               return (
                 <div key={idx} className="chart-bar-wrapper">
                   <div className="chart-bar" style={{ height: `${heightPct}%`, backgroundColor: 'var(--info)' }}>
-                    <span className="chart-tooltip">${rep.total.toLocaleString()}</span>
+                    <span className="chart-tooltip">AED {rep.total.toLocaleString()}</span>
                   </div>
                   <div className="chart-bar-label" style={{ fontSize: '0.65rem' }}>{rep.name.split(" ")[0]}</div>
                 </div>
@@ -550,7 +550,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
               )`
             }}>
               <div className="donut-chart-inner">
-                ${Math.round(totalYachtRevenue / 1000)}k
+                AED {Math.round(totalYachtRevenue / 1000)}k
               </div>
             </div>
 
@@ -641,12 +641,12 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
                       <td><strong>{b.guestName}</strong></td>
                       <td>{y ? y.name : 'Unknown Yacht'}</td>
                       <td>{b.durationHours} hrs</td>
-                      <td>${b.subtotal}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>${b.vatAmount} ({b.vatRate || 0}%)</td>
-                      <td><strong>${b.totalAmount}</strong></td>
-                      <td className="text-success">${b.paymentAmount}</td>
+                      <td>AED {b.subtotal}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>AED {b.vatAmount} ({b.vatRate || 0}%)</td>
+                      <td><strong>AED {b.totalAmount}</strong></td>
+                      <td className="text-success">AED {b.paymentAmount}</td>
                       <td className={due > 0 ? "text-danger" : "text-success"} style={{ fontWeight: 600 }}>
-                        {due > 0 ? `$${due}` : "Paid"}
+                        {due > 0 ? `AED ${due}` : "Paid"}
                       </td>
                       <td>{b.salesPerson}</td>
                     </tr>
@@ -668,7 +668,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
             </p>
           </div>
           <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', padding: '6px 12px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 600 }}>
-            Total On-Board Collections: ${bookings
+            Total On-Board Collections: AED {bookings
               .filter(b => b.paymentCollectedBy && b.paymentCollectedBy !== "Sales")
               .reduce((sum, b) => sum + b.paymentAmount, 0)
             }
@@ -710,7 +710,7 @@ export default function DashboardAccounts({ bookings, yachts, salesPersons }) {
                         <td>{new Date(b.startDate).toLocaleDateString()}</td>
                         <td>👤 {b.paymentCollectedBy}</td>
                         <td><span className="badge badge-info">{b.paymentMode}</span></td>
-                        <td><strong className="text-success">${b.paymentAmount}</strong></td>
+                        <td><strong className="text-success">AED {b.paymentAmount}</strong></td>
                         <td>
                           <span className={`badge ${b.boardingStatus === "Boarded" ? "badge-info" : b.boardingStatus === "Completed" ? "badge-success" : "badge-warning"}`}>
                             {b.boardingStatus}

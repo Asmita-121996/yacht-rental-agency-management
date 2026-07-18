@@ -389,9 +389,9 @@ Here is your official voyage itinerary and booking summary:
 - *Status:* [Confirmed]
 
 *Financial Summary:*
-- *Total Booking Amount:* $${totalAmount.toFixed(2)}
-- *Amount Paid:* $${paidAmount.toFixed(2)}
-- *Outstanding Balance:* $${remaining.toFixed(2)}
+- *Total Booking Amount:* AED ${totalAmount.toFixed(2)}
+- *Amount Paid:* AED ${paidAmount.toFixed(2)}
+- *Outstanding Balance:* AED ${remaining.toFixed(2)}
 
 *Boarding Instructions:*
 Please arrive at the marina *15 minutes prior* to your scheduled departure time. Ensure all boarding guests have valid identification documents.
@@ -532,9 +532,9 @@ Here is your official voyage itinerary and booking summary:
 - *Status:* [Confirmed]
 
 *Financial Summary:*
-- *Total Booking Amount:* $${totalAmount.toFixed(2)}
-- *Amount Paid:* $${paidAmount.toFixed(2)}
-- *Outstanding Balance:* $${remaining.toFixed(2)}
+- *Total Booking Amount:* AED ${totalAmount.toFixed(2)}
+- *Amount Paid:* AED ${paidAmount.toFixed(2)}
+- *Outstanding Balance:* AED ${remaining.toFixed(2)}
 
 *Boarding Instructions:*
 Please arrive at the marina *15 minutes prior* to your scheduled departure time. Ensure all boarding guests have valid identification documents.
@@ -629,7 +629,7 @@ Best regards,
           </div>
           <div className="form-group" style={{ margin: 0 }}>
             <label>
-              Rate/hr ($)
+              Rate/hr (AED)
               {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
                 <span style={{ color: 'var(--warning, #f59e0b)', fontSize: '0.7rem', marginLeft: '6px', fontWeight: 600 }}>✎ Custom</span>
               )}
@@ -641,14 +641,14 @@ Best regards,
               value={offeredHourlyRate !== null ? offeredHourlyRate : (selectedYacht?.hourlyRate || '')}
               onChange={(e) => setOfferedHourlyRate(e.target.value === '' ? null : Number(e.target.value))}
               disabled={isReadOnly}
-              placeholder={selectedYacht ? `Std: $${selectedYacht.hourlyRate}` : ''}
+              placeholder={selectedYacht ? `Std: AED ${selectedYacht.hourlyRate}` : ''}
               style={offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate
                 ? { borderColor: '#f59e0b', color: '#f59e0b' }
                 : {}}
             />
             {selectedYacht && offeredHourlyRate !== null && Number(offeredHourlyRate) !== selectedYacht.hourlyRate && (
               <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
-                Std: ${selectedYacht.hourlyRate}/hr
+                Std: AED {selectedYacht.hourlyRate}/hr
                 <button type="button" onClick={() => setOfferedHourlyRate(null)} style={{ marginLeft: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.7rem', textDecoration: 'underline' }}>Reset</button>
               </small>
             )}
@@ -675,6 +675,7 @@ Best regards,
               onChange={(e) => setPhoneNumber(e.target.value)}
               placeholder="e.g. +1234567890"
               disabled={isReadOnly}
+              required
             />
           </div>
         </div>
@@ -772,23 +773,23 @@ Best regards,
           </h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Decoration ($)</label>
+              <label>Decoration (AED)</label>
               <input type="number" min="0" value={decorationCharges} onChange={(e) => setDecorationCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Water Slide ($)</label>
+              <label>Water Slide (AED)</label>
               <input type="number" min="0" value={waterSlideCharges} onChange={(e) => setWaterSlideCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Jet Ski ($)</label>
+              <label>Jet Ski (AED)</label>
               <input type="number" min="0" value={jetSkiCharges} onChange={(e) => setJetSkiCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Catering ($)</label>
+              <label>Catering (AED)</label>
               <input type="number" min="0" value={cateringCharges} onChange={(e) => setCateringCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
-              <label>Other Service ($)</label>
+              <label>Other Service (AED)</label>
               <input type="number" min="0" value={otherCharges} onChange={(e) => setOtherCharges(e.target.value === '' ? '' : Number(e.target.value))} disabled={isReadOnly} />
             </div>
             <div className="form-group" style={{ margin: 0 }}>
@@ -813,29 +814,29 @@ Best regards,
                   Yacht Charter ({selectedYacht?.name}
                   {offeredHourlyRate !== null && selectedYacht && Number(offeredHourlyRate) !== selectedYacht.hourlyRate ? (
                     <>
-                      {' '}@ <span style={{ color: '#f59e0b', fontWeight: 600 }}>${effectiveRate}/hr</span>
-                      <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '4px', fontSize: '0.8rem' }}>${selectedYacht.hourlyRate}</span>
+                      {' '}@ <span style={{ color: '#f59e0b', fontWeight: 600 }}>AED {effectiveRate}/hr</span>
+                      <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through', marginLeft: '4px', fontSize: '0.8rem' }}>AED {selectedYacht.hourlyRate}</span>
                     </>
                   ) : (
-                    ` @ $${effectiveRate}/hr`
+                    ` @ AED ${effectiveRate}/hr`
                   )}
                   {` × ${tempDuration.toFixed(1)}h`}):
                 </span>
-                <span>${yachtCost}</span>
+                <span>AED {yachtCost}</span>
               </div>
-              {decCost > 0 && <div className="flex justify-between"><span>Decoration:</span><span>${decCost}</span></div>}
-              {slideCost > 0 && <div className="flex justify-between"><span>Water Slide:</span><span>${slideCost}</span></div>}
-              {skiCost > 0 && <div className="flex justify-between"><span>Jet Ski:</span><span>${skiCost}</span></div>}
-              {catCost > 0 && <div className="flex justify-between"><span>Catering:</span><span>${catCost}</span></div>}
-              {othCost > 0 && <div className="flex justify-between"><span>Other:</span><span>${othCost}</span></div>}
+              {decCost > 0 && <div className="flex justify-between"><span>Decoration:</span><span>AED {decCost}</span></div>}
+              {slideCost > 0 && <div className="flex justify-between"><span>Water Slide:</span><span>AED {slideCost}</span></div>}
+              {skiCost > 0 && <div className="flex justify-between"><span>Jet Ski:</span><span>AED {skiCost}</span></div>}
+              {catCost > 0 && <div className="flex justify-between"><span>Catering:</span><span>AED {catCost}</span></div>}
+              {othCost > 0 && <div className="flex justify-between"><span>Other:</span><span>AED {othCost}</span></div>}
               <div className="flex justify-between" style={{ fontWeight: 500, borderTop: '1px solid var(--border-color)', paddingTop: '6px' }}>
-                <span>Subtotal:</span><span>${tempSubtotal}</span>
+                <span>Subtotal:</span><span>AED {tempSubtotal}</span>
               </div>
               <div className="flex justify-between" style={{ color: 'var(--text-muted)' }}>
-                <span>VAT ({vatRate}%):</span><span>${tempVatAmount}</span>
+                <span>VAT ({vatRate}%):</span><span>AED {tempVatAmount}</span>
               </div>
               <div className="flex justify-between" style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                <span>Grand Total:</span><span>${tempTotalAmount}</span>
+                <span>Grand Total:</span><span>AED {tempTotalAmount}</span>
               </div>
             </div>
           </div>
