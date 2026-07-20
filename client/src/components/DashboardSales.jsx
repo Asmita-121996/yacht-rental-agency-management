@@ -136,10 +136,14 @@ export default function DashboardSales({
 
   // Set default salesperson based on current persona
   useEffect(() => {
-    if (currentPersona && currentPersona.role === 'sales') {
-      setSalesPersonName(currentPersona.name);
+    if (currentPersona) {
+      if (currentPersona.role === 'sales') {
+        setSalesPersonName(currentPersona.name);
+      } else if (currentPersona.role === 'admin') {
+        setSalesPersonName(salesPersons[0]?.name || "Office");
+      }
     }
-  }, [currentPersona]);
+  }, [currentPersona, salesPersons]);
 
   // Handle availability checker trigger
   const handleCheckAvailability = (e) => {
@@ -183,7 +187,7 @@ export default function DashboardSales({
     setBookingStatus("Pending");
     setVatRate(0);
     setFormDuration(4);
-    setSalesPersonName(currentPersona?.name || salesPersons[0]?.name || "");
+    setSalesPersonName(currentPersona?.role === 'sales' ? currentPersona.name : (salesPersons[0]?.name || "Office"));
     setFormError("");
     setShowFormModal(true);
   };
@@ -353,7 +357,7 @@ export default function DashboardSales({
       setPaymentAmount(0);
       setBookingStatus("Pending");
       setVatRate(0);
-      setSalesPersonName(currentPersona?.name || salesPersons[0]?.name || "");
+      setSalesPersonName(currentPersona?.role === 'sales' ? currentPersona.name : (salesPersons[0]?.name || "Office"));
       setFormError("");
       
       // Open modal
@@ -452,10 +456,17 @@ Best regards,
       return;
     }
 
+    // Capacity Validation
+    const selectedYacht = yachts.find(y => y.id === yachtId);
+    const totalGuests = (Number(adults) || 0) + (Number(children) || 0);
+    if (selectedYacht && totalGuests > selectedYacht.capacity) {
+      triggerFormError(`Max ${selectedYacht.capacity} guest is only allowed for the selected yacht "${selectedYacht.name}". You entered ${totalGuests} guests.`);
+      return;
+    }
+
     // Calculate totals
     const yacht = yachts.find(y => y.id === yachtId);
     const exactHours = (endVal - startVal) / (1000 * 60 * 60);
-    const totalGuests = (Number(adults) || 0) + (Number(children) || 0);
 
     const yachtCost = Math.round((yacht?.hourlyRate || 0) * exactHours);
     const decCost = Number(decorationCharges) || 0;
@@ -740,9 +751,15 @@ Best regards,
             <input
               type="number"
               min="1"
+              max="999"
               value={adults}
-              onChange={(e) => setAdults(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length > 3) return; // Prevent more than 3 digits
+                setAdults(val === '' ? '' : Number(val));
+              }}
               disabled={isReadOnly}
+              placeholder="1"
             />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
@@ -750,9 +767,15 @@ Best regards,
             <input
               type="number"
               min="0"
+              max="999"
               value={children}
-              onChange={(e) => setChildren(e.target.value === '' ? '' : Number(e.target.value))}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length > 3) return; // Prevent more than 3 digits
+                setChildren(val === '' ? '' : Number(val));
+              }}
               disabled={isReadOnly}
+              placeholder="0"
             />
           </div>
           <div className="form-group" style={{ margin: 0 }}>
