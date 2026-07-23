@@ -84,6 +84,7 @@ export default function DashboardSales({
   const [formError, setFormError] = useState("");
   const [vatRate, setVatRate] = useState(0); // Optional VAT (0, 5, or 7)
   const [formDuration, setFormDuration] = useState(4);
+  const [remarks, setRemarks] = useState("");
 
   // Natural language quick add state
   const [quickAddText, setQuickAddText] = useState("");
@@ -188,6 +189,7 @@ export default function DashboardSales({
     setVatRate(0);
     setFormDuration(4);
     setSalesPersonName(currentPersona?.role === 'sales' ? currentPersona.name : (salesPersons[0]?.name || "Office"));
+    setRemarks("");
     setFormError("");
     setShowFormModal(true);
   };
@@ -217,6 +219,7 @@ export default function DashboardSales({
     setBookingStatus(booking.status);
     setVatRate(booking.vatRate || 0);
     setSalesPersonName(booking.salesPerson);
+    setRemarks(booking.remarks || "");
     setFormError("");
     setShowFormModal(true);
   };
@@ -507,6 +510,7 @@ Best regards,
       paymentAmount: Number(paymentAmount),
       status: bookingStatus,
       salesPerson: salesPersonName,
+      remarks,
       createdAt: editingBooking ? editingBooking.createdAt : new Date().toISOString()
     };
 
@@ -824,6 +828,19 @@ Best regards,
               </select>
             </div>
           </div>
+        </div>
+
+        {/* Remarks Input Field */}
+        <div className="form-group" style={{ marginBottom: '16px' }}>
+          <label>Remarks / Notes</label>
+          <textarea
+            rows="2"
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            placeholder="e.g. Guest requested special VIP setup, extra soft drinks, late boarding check, etc..."
+            disabled={isReadOnly}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', fontSize: '0.88rem', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-main)' }}
+          />
         </div>
 
         {/* Dynamic Booking Statement + Payment side by side */}

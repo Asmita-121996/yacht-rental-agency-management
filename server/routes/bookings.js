@@ -46,7 +46,8 @@ router.get('/', requireAuth, async (req, res) => {
       paymentCollectedBy: b.payment_collected_by,
       boardingStatus: b.boarding_status,
       guestEmail: b.guest_email,
-      phoneNumber: b.phone_number
+      phoneNumber: b.phone_number,
+      remarks: b.remarks
     }));
 
     res.json(bookings);
@@ -63,7 +64,7 @@ router.post('/', requireAuth, async (req, res) => {
     offeredHourlyRate, cateringEnabled, externalServiceCharges, subtotal, vatRate, vatAmount,
     totalAmount, paymentMode, paymentAmount, status, salesPerson,
     decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges,
-    guestEmail, phoneNumber
+    guestEmail, phoneNumber, remarks
   } = req.body;
 
   try {
@@ -118,7 +119,8 @@ router.post('/', requireAuth, async (req, res) => {
         payment_collected_by: req.body.paymentCollectedBy || null,
         boarding_status: req.body.boardingStatus || 'Scheduled',
         guest_email: guestEmail || null,
-        phone_number: phoneNumber || null
+        phone_number: phoneNumber || null,
+        remarks: remarks || null
       }
     });
 
@@ -144,7 +146,7 @@ router.put('/:id', requireAuth, async (req, res) => {
     offeredHourlyRate, cateringEnabled, externalServiceCharges, subtotal, vatRate, vatAmount,
     totalAmount, paymentMode, paymentAmount, status, salesPerson,
     decorationCharges, waterSlideCharges, jetSkiCharges, cateringCharges, otherCharges,
-    guestEmail, phoneNumber
+    guestEmail, phoneNumber, remarks
   } = req.body;
 
   try {
@@ -203,7 +205,8 @@ router.put('/:id', requireAuth, async (req, res) => {
         payment_collected_by: req.body.paymentCollectedBy,
         boarding_status: req.body.boardingStatus,
         guest_email: guestEmail,
-        phone_number: phoneNumber
+        phone_number: phoneNumber,
+        remarks: remarks
       }
     });
 
